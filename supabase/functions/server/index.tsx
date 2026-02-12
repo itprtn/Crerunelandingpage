@@ -15,16 +15,33 @@ const supabase = createClient(
 // Enable logger
 app.use('*', logger(console.log));
 
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  "https://per-premunia.netlify.app",
+  "https://crm.premunia.eu",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+// Dynamic CORS origin check: allows known origins + Vercel/Netlify preview domains
+const isAllowedOrigin = (origin: string): boolean => {
+  if (!origin) return true; // Allow server-to-server requests
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  // Allow Vercel preview deployments
+  if (origin.endsWith(".vercel.app")) return true;
+  if (origin.endsWith(".vusercontent.net")) return true;
+  // Allow Netlify preview deployments
+  if (origin.endsWith(".netlify.app")) return true;
+  return false;
+};
+
 // Enable CORS for all routes and methods
 app.use(
   "/*",
   cors({
-    origin: [
-      "https://per-premunia.netlify.app",
-      "https://crm.premunia.eu",
-      "http://localhost:5173",
-      "http://localhost:3000",
-    ],
+    origin: (origin) => {
+      return isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
+    },
     allowHeaders: [
       "Content-Type",
       "Authorization",

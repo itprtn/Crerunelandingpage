@@ -45,17 +45,69 @@ const CHART_DATA = [
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [serverStatus, setServerStatus] = useState<"checking" | "ok" | "error" | "cors">("checking");
+  const [serverDetail, setServerDetail] = useState("");
+
+  // Debug: log the API_URL being used
+  console.log("[v0] API_URL configured:", API_URL);
+
+  // Test server connectivity on mount
+  React.useEffect(() => {
+    const testConnection = async () => {
+      const healthUrl = `${API_URL}/health`;
+      console.log("[v0] Testing server connectivity:", healthUrl);
+      try {
+        const res = await fetch(healthUrl);
+        console.log("[v0] Health check status:", res.status);
+        if (res.ok) {
+          const data = await res.json();
+          console.log("[v0] Health check response:", data);
+          setServerStatus("ok");
+          setServerDetail(`Serveur OK (${res.status})`);
+        } else {
+          const text = await res.text();
+          console.error("[v0] Health check failed:", res.status, text);
+          setServerStatus("error");
+          setServerDetail(`Erreur serveur: ${res.status} - ${text.substring(0, 100)}`);
+        }
+      } catch (err: any) {
+        console.error("[v0] Health check exception:", err.message, err.name);
+        if (err.name === "TypeError" && err.message.includes("Failed to fetch")) {
+          setServerStatus("cors");
+          setServerDetail("CORS bloque les requetes - L'Edge Function doit etre redeployee");
+        } else {
+          setServerStatus("error");
+          setServerDetail(`Erreur: ${err.message}`);
+        }
+      }
+    };
+    testConnection();
+  }, []);
 
   // Fetch settings from Edge Function (KV store)
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: async () => {
+      const settingsUrl = `${API_URL}/settings`;
+      console.log("[v0] Fetching settings from:", settingsUrl);
       try {
-        const res = await fetch(`${API_URL}/settings`);
-        if (!res.ok) throw new Error("Failed to fetch settings");
-        return await res.json();
-      } catch (err) {
-        console.error("[v0] Settings fetch error:", err);
+        const res = await fetch(settingsUrl);
+        console.log("[v0] Settings response status:", res.status, res.statusText);
+        console.log("[v0] Settings response headers:", Object.fromEntries(res.headers.entries()));
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("[v0] Settings response body (error):", errorText);
+          throw new Error(`Failed to fetch settings: ${res.status}`);
+        }
+        const data = await res.json();
+        console.log("[v0] Settings data received:", data);
+        return data;
+      } catch (err: any) {
+        console.error("[v0] Settings fetch error:", err.message);
+        console.error("[v0] Settings fetch error type:", err.name);
+        if (err.name === "TypeError" && err.message.includes("Failed to fetch")) {
+          console.error("[v0] CORS ERROR DETECTED - The Edge Function is blocking this origin");
+        }
         return {
           hero_title: "Préparez votre retraite sans sacrifier votre présent",
           hero_subtitle: "Le Plan Épargne Retraite (PER) sur-mesure pour les professions libérales : optimisez votre fiscalité dès aujourd'hui.",
@@ -70,32 +122,67 @@ export default function LandingPage() {
 
   const leadMutation = useMutation({
     mutationFn: async (formData: any) => {
-      const res = await fetch(`${API_URL}/leads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
-          phone: formData.phone,
-          profession: formData.profession,
-          message: formData.message || "",
-        }),
-      });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: "Erreur inconnue" }));
-        throw new Error(error.error || "Erreur lors de l'envoi");
+      const leadsUrl = `${API_URL}/leads`;
+      const payload = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone,
+        profession: formData.profession,
+        message: formData.message || "",
+      };
+
+      console.log("[v0] === LEAD SUBMISSION START ===");
+      console.log("[v0] Target URL:", leadsUrl);
+      console.log("[v0] Payload:", JSON.stringify(payload, null, 2));
+      console.log("[v0] Current origin:", window.location.origin);
+
+      try {
+        const res = await fetch(leadsUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        console.log("[v0] Lead response status:", res.status, res.statusText);
+        console.log("[v0] Lead response headers:", Object.fromEntries(res.headers.entries()));
+
+        if (!res.ok) {
+          const errorBody = await res.text();
+          console.error("[v0] Lead error response body:", errorBody);
+          let parsedError;
+          try {
+            parsedError = JSON.parse(errorBody);
+          } catch {
+            parsedError = { error: errorBody || "Erreur inconnue" };
+          }
+          throw new Error(parsedError.error || `HTTP ${res.status}: Erreur lors de l'envoi`);
+        }
+
+        const result = await res.json();
+        console.log("[v0] Lead submission SUCCESS:", result);
+        console.log("[v0] === LEAD SUBMISSION END ===");
+        return result;
+      } catch (err: any) {
+        console.error("[v0] Lead fetch exception:", err.message);
+        console.error("[v0] Lead error type:", err.name);
+        if (err.name === "TypeError" && err.message.includes("Failed to fetch")) {
+          console.error("[v0] CORS ERROR on lead submission - Check Edge Function CORS config");
+          console.error("[v0] Expected origin in CORS allow list:", window.location.origin);
+          throw new Error("Erreur de connexion au serveur (CORS). Contactez l'administrateur.");
+        }
+        throw err;
       }
-      return res.json();
     },
     onSuccess: () => {
-      toast.success("Demande envoyée ! Nous vous contacterons prochainement.");
+      console.log("[v0] Lead mutation onSuccess - showing toast and resetting form");
+      toast.success("Demande envoyee ! Nous vous contacterons prochainement.");
       const form = document.getElementById("lead-form") as HTMLFormElement;
       if (form) form.reset();
     },
     onError: (error: any) => {
-      console.error("[v0] Lead error:", error.message);
-      toast.error("Erreur lors de l'envoi. Veuillez réessayer.");
+      console.error("[v0] Lead mutation onError:", error.message);
+      toast.error(error.message || "Erreur lors de l'envoi. Veuillez reessayer.");
     },
   });
 
@@ -103,6 +190,18 @@ export default function LandingPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
+    console.log("[v0] Form submitted with data:", data);
+    console.log("[v0] Form fields present:", Object.keys(data));
+    
+    // Validate required fields before sending
+    const required = ["first_name", "last_name", "email", "phone", "profession"];
+    const missing = required.filter((f) => !data[f]);
+    if (missing.length > 0) {
+      console.error("[v0] Missing required fields:", missing);
+      toast.error(`Champs manquants : ${missing.join(", ")}`);
+      return;
+    }
+    
     leadMutation.mutate(data);
   };
 
@@ -350,8 +449,20 @@ export default function LandingPage() {
                   </button>
                   <p className="text-center text-xs text-slate-400">
                     En validant ce formulaire, vous acceptez nos conditions
-                    générales d'utilisation.
+                    generales d'utilisation.
                   </p>
+                  {/* Debug: Server connectivity status */}
+                  <div className={`text-xs p-2 rounded-lg text-center ${
+                    serverStatus === "ok" ? "bg-green-50 text-green-700 border border-green-200" :
+                    serverStatus === "cors" ? "bg-red-50 text-red-700 border border-red-200" :
+                    serverStatus === "error" ? "bg-orange-50 text-orange-700 border border-orange-200" :
+                    "bg-slate-50 text-slate-500 border border-slate-200"
+                  }`}>
+                    {serverStatus === "checking" && "Verification de la connexion au serveur..."}
+                    {serverStatus === "ok" && `Serveur connecte - ${serverDetail}`}
+                    {serverStatus === "cors" && `CORS Error - ${serverDetail}`}
+                    {serverStatus === "error" && `Erreur serveur - ${serverDetail}`}
+                  </div>
                 </form>
               </div>
             </div>
