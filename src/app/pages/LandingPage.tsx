@@ -27,7 +27,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { API_URL, publicAnonKey } from "../../utils/supabase";
+import { supabase } from "../../utils/supabase";
 
 // Premunia Brand Colors
 const COLORS = {
@@ -50,31 +50,65 @@ export default function LandingPage() {
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/settings`);
-      if (!res.ok) throw new Error("Settings failed");
-      return res.json();
+      try {
+        const { data, error } = await supabase
+          .from("app_settings")
+          .select("*")
+          .single();
+        
+        if (error || !data) {
+          return {
+            hero_title: "Préparez votre retraite sans sacrifier votre présent",
+            hero_subtitle: "Le Plan Épargne Retraite (PER) sur-mesure pour les professions libérales : optimisez votre fiscalité dès aujourd'hui.",
+            contact_email: "contact@premunia.fr",
+            contact_phone: "01 00 00 00 00",
+            contact_address: "828 Av. Roger Salengro, 92370 Chaville"
+          };
+        }
+        return data;
+      } catch (err) {
+        console.error("[v0] Settings fetch error:", err);
+        return {
+          hero_title: "Préparez votre retraite sans sacrifier votre présent",
+          hero_subtitle: "Le Plan Épargne Retraite (PER) sur-mesure pour les professions libérales : optimisez votre fiscalité dès aujourd'hui.",
+        };
+      }
     },
+    retry: 1,
   });
 
   const leadMutation = useMutation({
     mutationFn: async (formData: any) => {
-      const res = await fetch(`${API_URL}/leads`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${publicAnonKey}`,
-        },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) throw new Error("Submission failed");
-      return res.json();
+      try {
+        const { data, error } = await supabase
+          .from("leads")
+          .insert([
+            {
+              first_name: formData.first_name,
+              last_name: formData.last_name,
+              email: formData.email,
+              phone: formData.phone,
+              profession: formData.profession,
+              message: formData.message || '',
+              status: 'new',
+            }
+          ])
+          .select();
+        
+        if (error) throw new Error(error.message);
+        return data;
+      } catch (err) {
+        console.error("[v0] Lead submission error:", err);
+        throw err;
+      }
     },
     onSuccess: () => {
       toast.success("Demande envoyée ! Nous vous contacterons prochainement.");
       const form = document.getElementById("lead-form") as HTMLFormElement;
       if (form) form.reset();
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("[v0] Lead error:", error.message);
       toast.error("Erreur lors de l'envoi. Veuillez réessayer.");
     },
   });

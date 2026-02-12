@@ -6,15 +6,27 @@ export { projectId, publicAnonKey } from "/utils/supabase/info";
 
 export const supabase = createClient(
   `https://${projectId}.supabase.co`,
-  publicAnonKey
+  publicAnonKey,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  }
 );
 
-export const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-07afcff5`;
+// Fallback API URL for future edge functions
+export const API_URL = `https://${projectId}.supabase.co/functions/v1`;
 
 // Helper to get access token
 export const getAccessToken = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || publicAnonKey;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || publicAnonKey;
+  } catch (error) {
+    console.error("[v0] Error getting access token:", error);
+    return publicAnonKey;
+  }
 };
 
 // Helper to make authenticated requests
@@ -31,9 +43,9 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || 'API request failed');
   }
 
-  return response.json();
+  return response.json().catch(() => ({}));
 };
