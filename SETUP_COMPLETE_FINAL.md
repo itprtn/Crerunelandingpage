@@ -18,11 +18,11 @@
 - [x] Error handling configured
 
 ### ✅ Database Schema
-- [x] `scripts/01-init-supabase.sql` ready (250+ lines)
-- [x] 8 tables designed
-- [x] RLS policies defined
-- [x] Triggers and functions configured
-- [x] Indexes optimized
+- [x] `scripts/01-init-supabase.sql` ready (265 lines)
+- [x] 7 tables designed (leads, app_settings, user_roles, smtp_config, audit_logs, email_history, lead_activities)
+- [x] 14 RLS policies defined
+- [x] 3 Triggers and functions configured
+- [x] 13 Indexes optimized
 
 ### ✅ Testing & Verification
 - [x] Connection test script created

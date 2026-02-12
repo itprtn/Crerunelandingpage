@@ -46,7 +46,7 @@ $ bash scripts/run-migration.sh
 4. Paste SQL code
 5. Click Run
 
-✅ Result: All 8 tables created
+✅ Result: All 7 tables created
 ```
 
 ### Visual:
@@ -56,14 +56,13 @@ $ bash scripts/run-migration.sh
 ├──────────────────────────────────────┤
 │ Projects                             │
 │  ├─ gfedfklnzkgifpdxrybh  ✓         │
-│     ├─ users              ✓ NEW    │
-│     ├─ companies          ✓ NEW    │
-│     ├─ contacts           ✓ NEW    │
 │     ├─ leads              ✓ NEW    │
-│     ├─ opportunities      ✓ NEW    │
-│     ├─ tasks              ✓ NEW    │
-│     ├─ activities         ✓ NEW    │
-│     └─ settings           ✓ NEW    │
+│     ├─ app_settings       ✓ NEW    │
+│     ├─ user_roles         ✓ NEW    │
+│     ├─ smtp_config        ✓ NEW    │
+│     ├─ audit_logs         ✓ NEW    │
+│     ├─ email_history      ✓ NEW    │
+│     └─ lead_activities    ✓ NEW    │
 └──────────────────────────────────────┘
 ```
 
@@ -189,25 +188,23 @@ VITE_API_URL
 
 ```
 DATABASE SCHEMA
-├─ Tables (8)
-│  ├─ users
-│  ├─ companies
-│  ├─ contacts
+├─ Tables (7)
 │  ├─ leads
-│  ├─ opportunities
-│  ├─ tasks
-│  ├─ activities
-│  └─ settings
+│  ├─ app_settings
+│  ├─ user_roles
+│  ├─ smtp_config
+│  ├─ audit_logs
+│  ├─ email_history
+│  └─ lead_activities
 │
-├─ Security (11 RLS Policies)
+├─ Security (14 RLS Policies)
 │  └─ Automatic access control
 │
 ├─ Automation (4 Triggers)
 │  └─ Auto timestamp updates
 │  └─ Activity logging
-│  └─ New user handling
 │
-└─ Performance (8 Indexes)
+└─ Performance (13 Indexes)
    └─ Fast queries
    └─ Optimized lookups
 ```

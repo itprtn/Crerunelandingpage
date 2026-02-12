@@ -103,18 +103,18 @@ npm run dev
 
 ## 📊 What Gets Created in Database
 
-### 8 Tables
-✅ users, companies, contacts, leads, opportunities, tasks, activities, settings
-
-### Security
-✅ Row Level Security (11 policies)
-✅ User authentication built-in
-✅ Automatic audit logging
-✅ Data isolation per user
-
-### Performance
-✅ 8 Indexes for fast queries
-✅ 4 Triggers for automation
+  ### 7 Tables
+> ✅ leads, app_settings, user_roles, smtp_config, audit_logs, email_history, lead_activities
+  
+  ### Security
+  ✅ Row Level Security (14 policies)
+  ✅ User authentication built-in
+  ✅ Automatic audit logging
+  ✅ Data isolation per user
+  
+  ### Performance
+  ✅ 13 Indexes for fast queries
+  ✅ 4 Triggers for automation
 ✅ 2 Functions for custom logic
 
 ---

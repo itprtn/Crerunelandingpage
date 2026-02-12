@@ -27,10 +27,10 @@
 
 **Incluant**:
 - ✅ 7 tables PostgreSQL complètes
-- ✅ 11 Row Level Security policies
+- ✅ 14 Row Level Security policies
 - ✅ 4 triggers pour auto-timestamp
-- ✅ 2 fonctions SQL
-- ✅ 8 indexes optimisés
+- ✅ 3 fonctions SQL
+- ✅ 13 indexes optimisés
 - ✅ Données par défaut
 
 **Tables créées**:

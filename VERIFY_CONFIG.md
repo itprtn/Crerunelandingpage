@@ -82,15 +82,14 @@ Or view at: `scripts/01-init-supabase.sql`
 
 ### Step 4: Verify Tables Created
 1. Go to **Table Editor** in Supabase
-2. You should see these tables:
-   - users
-   - companies
-   - contacts
+2. You should see these 7 tables:
    - leads
-   - opportunities
-   - tasks
-   - activities
-   - settings
+   - app_settings
+   - user_roles
+   - smtp_config
+   - audit_logs
+   - email_history
+   - lead_activities
 
 ---
 
@@ -129,69 +128,53 @@ npm run dev
 ### Test 3: Supabase Dashboard Verification
 1. Open Supabase dashboard
 2. Check **Authentication** → Should have auth system ready
-3. Check **Database** → Should have all 8 tables
-4. Check **Database** → **Policies** → Should have 11 RLS policies
+3. Check **Database** → Should have all 7 tables
+4. Check **Database** → **Policies** → Should have 14 RLS policies
 5. Check **Database** → **Triggers** → Should have 4 triggers
 
 ---
 
 ## 📊 What Gets Created in Database
 
-### Tables (8)
+### Tables (7)
 | Table | Purpose | Rows | Status |
 |-------|---------|------|--------|
-| users | User profiles | 0 | Ready |
-| companies | Company data | 0 | Ready |
-| contacts | Contact management | 0 | Ready |
-| leads | Lead tracking | 0 | Ready |
-| opportunities | Sales opportunities | 0 | Ready |
-| tasks | Task management | 0 | Ready |
-| activities | Activity log | 0 | Ready |
-| settings | App settings | 1 | Pre-populated |
+| leads | Lead tracking from landing page | 0 | Ready |
+| app_settings | Application settings | 1 | Pre-populated |
+| user_roles | User role management | 0 | Ready |
+| smtp_config | Email configuration | 0 | Ready |
+| audit_logs | Action audit trail | 0 | Ready |
+| email_history | Email sending history | 0 | Ready |
+| lead_activities | Lead activity log | 0 | Ready |
 
-### Security Policies (11 RLS)
-- users_delete_own
-- users_insert_own
-- users_select
-- users_update_own
-- companies_delete
-- companies_insert
-- companies_select
-- companies_update
-- contacts_delete
-- contacts_insert
-- contacts_select
-- contacts_update
-- leads_delete
-- leads_insert
-- leads_select
-- leads_update
-- opportunities_delete
-- opportunities_insert
-- opportunities_select
-- opportunities_update
-- tasks_delete
-- tasks_insert
-- tasks_select
-- tasks_update
-- activities_insert
-- activities_select
+### Security Policies (14 RLS)
+- leads: public_create, auth_read, auth_update, auth_delete
+- app_settings: public_read, auth_insert, auth_update
+- user_roles: users_read_own, auth_create, auth_update
+- smtp_config: auth_read, auth_create, auth_update
+- audit_logs: auth_read, system_insert
+- email_history: auth_read, system_insert
+- lead_activities: auth_read, system_insert
 
-### Triggers & Functions (4)
-- update_users_updated_at
-- update_companies_updated_at
-- audit_log_trigger
-- handle_new_user
+### Triggers & Functions (3)
+- update_updated_at_column (for leads, app_settings, user_roles, smtp_config)
+- get_lead_statistics (query function)
+- log_audit_event (audit function)
 
-### Indexes (8)
-- users_email_key (unique)
-- companies_name_key (unique)
-- contacts_email_key (unique)
-- activities_user_id (for queries)
-- tasks_assigned_to (for queries)
-- leads_status (for filtering)
-- opportunities_stage (for filtering)
-- users_created_at (for sorting)
+### Indexes (13)
+- idx_leads_status
+- idx_leads_email
+- idx_leads_created_at
+- idx_leads_created_by
+- idx_user_roles_user_id
+- idx_audit_logs_user_id
+- idx_audit_logs_created_at
+- idx_audit_logs_resource
+- idx_email_history_lead_id
+- idx_email_history_status
+- idx_email_history_created_at
+- idx_lead_activities_lead_id
+- idx_lead_activities_created_at
 
 ---
 
@@ -214,11 +197,11 @@ VITE_API_URL=https://gfedfklnzkgifpdxrybh.supabase.co/functions/v1
 Run this checklist before considering setup complete:
 
 ### Database
-- [ ] All 8 tables exist
+- [ ] All 7 tables exist (leads, app_settings, user_roles, smtp_config, audit_logs, email_history, lead_activities)
 - [ ] Tables have correct columns
-- [ ] RLS policies enabled
-- [ ] Triggers working
-- [ ] Indexes created
+- [ ] 14 RLS policies enabled
+- [ ] 4 Triggers working
+- [ ] 13 Indexes created
 
 ### Code
 - [ ] `.env.local` has correct credentials

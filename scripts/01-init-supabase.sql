@@ -1,7 +1,9 @@
--- Premunia CRM - Supabase Initialization Script
--- This script sets up the complete database schema for Premunia CRM
+-- Premunia CRM - Supabase Database Schema
+-- FINAL VERSION - 7 Tables + Functions & Triggers
+-- This is the source of truth for your database
 
--- ============ LEADS TABLE ============
+-- ============ TABLE 1: LEADS ============
+-- Main table for all leads/prospects from landing page
 CREATE TABLE IF NOT EXISTS leads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   first_name VARCHAR(255) NOT NULL,
@@ -24,7 +26,8 @@ CREATE INDEX IF NOT EXISTS idx_leads_email ON leads(email);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_leads_created_by ON leads(created_by);
 
--- ============ APP SETTINGS TABLE ============
+-- ============ TABLE 2: APP_SETTINGS ============
+-- Global application settings
 CREATE TABLE IF NOT EXISTS app_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   hero_title VARCHAR(500),
@@ -37,7 +40,8 @@ CREATE TABLE IF NOT EXISTS app_settings (
   updated_by UUID REFERENCES auth.users(id)
 );
 
--- ============ USER ROLES TABLE ============
+-- ============ TABLE 3: USER_ROLES ============
+-- User role management (admin, user)
 CREATE TABLE IF NOT EXISTS user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -48,13 +52,14 @@ CREATE TABLE IF NOT EXISTS user_roles (
 
 CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
 
--- ============ SMTP CONFIG TABLE ============
+-- ============ TABLE 4: SMTP_CONFIG ============
+-- Email configuration for sending notifications
 CREATE TABLE IF NOT EXISTS smtp_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   host VARCHAR(255) NOT NULL,
   port INTEGER NOT NULL DEFAULT 587,
   username VARCHAR(255) NOT NULL,
-  password VARCHAR(500) NOT NULL, -- Store encrypted
+  password VARCHAR(500) NOT NULL,
   from_email VARCHAR(255) NOT NULL,
   from_name VARCHAR(255),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -62,7 +67,8 @@ CREATE TABLE IF NOT EXISTS smtp_config (
   updated_by UUID REFERENCES auth.users(id)
 );
 
--- ============ AUDIT LOG TABLE ============
+-- ============ TABLE 5: AUDIT_LOGS ============
+-- Complete audit trail of all admin actions
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id),
@@ -78,7 +84,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
 
--- ============ EMAIL HISTORY TABLE ============
+-- ============ TABLE 6: EMAIL_HISTORY ============
+-- Track all emails sent to leads
 CREATE TABLE IF NOT EXISTS email_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
@@ -94,11 +101,12 @@ CREATE INDEX IF NOT EXISTS idx_email_history_lead_id ON email_history(lead_id);
 CREATE INDEX IF NOT EXISTS idx_email_history_status ON email_history(status);
 CREATE INDEX IF NOT EXISTS idx_email_history_created_at ON email_history(created_at DESC);
 
--- ============ LEAD ACTIVITY LOG TABLE ============
+-- ============ TABLE 7: LEAD_ACTIVITIES ============
+-- Activity log for each lead (status changes, notes, emails, etc.)
 CREATE TABLE IF NOT EXISTS lead_activities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
-  activity_type VARCHAR(100) NOT NULL, -- 'status_change', 'note_added', 'email_sent', etc.
+  activity_type VARCHAR(100) NOT NULL,
   old_value JSONB,
   new_value JSONB,
   created_by UUID REFERENCES auth.users(id),
@@ -119,7 +127,7 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lead_activities ENABLE ROW LEVEL SECURITY;
 
--- Leads: Public read for landing page form submission, authenticated users can see all
+-- Leads: Public create, authenticated read/update/delete
 CREATE POLICY "Public can create leads" ON leads
   FOR INSERT WITH CHECK (true);
 
@@ -132,17 +140,17 @@ CREATE POLICY "Authenticated users can update leads" ON leads
 CREATE POLICY "Authenticated users can delete leads" ON leads
   FOR DELETE USING (auth.role() = 'authenticated');
 
--- App settings: Public read, only authenticated can update
+-- App settings: Public read, authenticated update
 CREATE POLICY "Anyone can read settings" ON app_settings
   FOR SELECT USING (true);
 
-CREATE POLICY "Authenticated users can update settings" ON app_settings
+CREATE POLICY "Authenticated users can insert settings" ON app_settings
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Authenticated users can modify settings" ON app_settings
+CREATE POLICY "Authenticated users can update settings" ON app_settings
   FOR UPDATE USING (auth.role() = 'authenticated');
 
--- User roles: Users can read own role, only authenticated can create/update
+-- User roles: Own role visible, authenticated can manage
 CREATE POLICY "Users can read own role" ON user_roles
   FOR SELECT USING (auth.uid() = user_id OR auth.role() = 'authenticated');
 
@@ -152,7 +160,7 @@ CREATE POLICY "Authenticated users can create role" ON user_roles
 CREATE POLICY "Authenticated users can update role" ON user_roles
   FOR UPDATE USING (auth.role() = 'authenticated');
 
--- SMTP config: Only authenticated can access
+-- SMTP config: Authenticated only
 CREATE POLICY "Authenticated users can read SMTP config" ON smtp_config
   FOR SELECT USING (auth.role() = 'authenticated');
 
@@ -162,21 +170,21 @@ CREATE POLICY "Authenticated users can create SMTP config" ON smtp_config
 CREATE POLICY "Authenticated users can update SMTP config" ON smtp_config
   FOR UPDATE USING (auth.role() = 'authenticated');
 
--- Audit logs: Only authenticated can read, system inserts
+-- Audit logs: Authenticated read, system insert
 CREATE POLICY "Authenticated users can read audit logs" ON audit_logs
   FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "System can insert audit logs" ON audit_logs
   FOR INSERT WITH CHECK (true);
 
--- Email history: Authenticated can read
+-- Email history: Authenticated read, system insert
 CREATE POLICY "Authenticated users can read email history" ON email_history
   FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "System can insert email history" ON email_history
   FOR INSERT WITH CHECK (true);
 
--- Lead activities: Authenticated can read
+-- Lead activities: Authenticated read, system insert
 CREATE POLICY "Authenticated users can read lead activities" ON lead_activities
   FOR SELECT USING (auth.role() = 'authenticated');
 
@@ -185,7 +193,6 @@ CREATE POLICY "System can insert lead activities" ON lead_activities
 
 -- ============ DEFAULT DATA ============
 
--- Insert default settings if not exists
 INSERT INTO app_settings (hero_title, hero_subtitle, contact_email, contact_phone, contact_address)
 VALUES (
   'Préparez votre retraite sans sacrifier votre présent',
@@ -198,7 +205,7 @@ ON CONFLICT DO NOTHING;
 
 -- ============ FUNCTIONS & TRIGGERS ============
 
--- Update timestamp trigger function
+-- Function 1: Update timestamp automatically
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -207,7 +214,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply update triggers
+-- Apply triggers to update timestamp
 CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON leads
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -220,21 +227,28 @@ CREATE TRIGGER update_user_roles_updated_at BEFORE UPDATE ON user_roles
 CREATE TRIGGER update_smtp_config_updated_at BEFORE UPDATE ON smtp_config
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Function to get lead statistics
+-- Function 2: Get lead statistics
 CREATE OR REPLACE FUNCTION get_lead_statistics()
-RETURNS TABLE(total_leads BIGINT, new_leads BIGINT, contacted_leads BIGINT, converted_leads BIGINT) AS $$
+RETURNS TABLE(
+  total_leads BIGINT,
+  new_leads BIGINT,
+  contacted_leads BIGINT,
+  converted_leads BIGINT,
+  rejected_leads BIGINT
+) AS $$
 BEGIN
   RETURN QUERY
   SELECT
     COUNT(*)::BIGINT,
     COALESCE(SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END)::BIGINT, 0),
     COALESCE(SUM(CASE WHEN status = 'contacted' THEN 1 ELSE 0 END)::BIGINT, 0),
-    COALESCE(SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END)::BIGINT, 0)
+    COALESCE(SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END)::BIGINT, 0),
+    COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END)::BIGINT, 0)
   FROM leads;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to log audit events
+-- Function 3: Log audit event
 CREATE OR REPLACE FUNCTION log_audit_event(
   p_user_id UUID,
   p_action VARCHAR,
