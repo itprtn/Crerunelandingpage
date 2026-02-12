@@ -27,7 +27,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { supabase } from "../../utils/supabase";
+import { API_URL } from "../../utils/supabase";
 
 // Premunia Brand Colors
 const COLORS = {
@@ -46,31 +46,22 @@ const CHART_DATA = [
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Fetch settings for dynamic content
+  // Fetch settings from Edge Function (KV store)
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase
-          .from("app_settings")
-          .select("*")
-          .single();
-        
-        if (error || !data) {
-          return {
-            hero_title: "Préparez votre retraite sans sacrifier votre présent",
-            hero_subtitle: "Le Plan Épargne Retraite (PER) sur-mesure pour les professions libérales : optimisez votre fiscalité dès aujourd'hui.",
-            contact_email: "contact@premunia.fr",
-            contact_phone: "01 00 00 00 00",
-            contact_address: "828 Av. Roger Salengro, 92370 Chaville"
-          };
-        }
-        return data;
+        const res = await fetch(`${API_URL}/settings`);
+        if (!res.ok) throw new Error("Failed to fetch settings");
+        return await res.json();
       } catch (err) {
         console.error("[v0] Settings fetch error:", err);
         return {
           hero_title: "Préparez votre retraite sans sacrifier votre présent",
           hero_subtitle: "Le Plan Épargne Retraite (PER) sur-mesure pour les professions libérales : optimisez votre fiscalité dès aujourd'hui.",
+          contact_email: "contact@premunia.fr",
+          contact_phone: "01 00 00 00 00",
+          contact_address: "828 Av. Roger Salengro, 92370 Chaville",
         };
       }
     },
@@ -79,28 +70,23 @@ export default function LandingPage() {
 
   const leadMutation = useMutation({
     mutationFn: async (formData: any) => {
-      try {
-        const { data, error } = await supabase
-          .from("leads")
-          .insert([
-            {
-              first_name: formData.first_name,
-              last_name: formData.last_name,
-              email: formData.email,
-              phone: formData.phone,
-              profession: formData.profession,
-              message: formData.message || '',
-              status: 'new',
-            }
-          ])
-          .select();
-        
-        if (error) throw new Error(error.message);
-        return data;
-      } catch (err) {
-        console.error("[v0] Lead submission error:", err);
-        throw err;
+      const res = await fetch(`${API_URL}/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email,
+          phone: formData.phone,
+          profession: formData.profession,
+          message: formData.message || "",
+        }),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: "Erreur inconnue" }));
+        throw new Error(error.error || "Erreur lors de l'envoi");
       }
+      return res.json();
     },
     onSuccess: () => {
       toast.success("Demande envoyée ! Nous vous contacterons prochainement.");

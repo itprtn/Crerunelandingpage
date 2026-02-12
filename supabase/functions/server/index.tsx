@@ -19,9 +19,20 @@ app.use('*', logger(console.log));
 app.use(
   "/*",
   cors({
-    origin: "*",
-    allowHeaders: ["Content-Type", "Authorization"],
+    origin: [
+      "https://per-premunia.netlify.app",
+      "https://crm.premunia.eu",
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "apikey",
+      "x-client-info",
+    ],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
   }),

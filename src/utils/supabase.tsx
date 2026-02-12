@@ -15,8 +15,8 @@ export const supabase = createClient(
   }
 );
 
-// Fallback API URL for future edge functions
-export const API_URL = `https://${projectId}.supabase.co/functions/v1`;
+// Edge Function base URL - includes the function name prefix for all routes
+export const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-07afcff5`;
 
 // Helper to get access token
 export const getAccessToken = async () => {
