@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { supabase } from "../../utils/supabase";
+import { auth } from "../../utils/postgres";
 import { toast } from "sonner";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -15,17 +15,14 @@ export default function SignIn() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const response = await auth.signIn(email, password);
 
-      if (error) throw error;
-
-      toast.success("Connexion réussie !");
-      navigate("/admin");
+      if (response.token) {
+        toast.success("Connexion réussie !");
+        navigate("/admin");
+      }
     } catch (error: any) {
-      console.error("Sign in error:", error);
+      console.error("[SignIn] Error:", error);
       toast.error(error.message || "Erreur de connexion");
     } finally {
       setLoading(false);

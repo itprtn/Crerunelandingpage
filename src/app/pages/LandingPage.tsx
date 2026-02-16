@@ -27,7 +27,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { supabase } from "../../utils/supabase";
+import { leadsApi, settingsApi } from "../../utils/postgres";
 
 // Premunia Brand Colors
 const COLORS = {
@@ -51,26 +51,22 @@ export default function LandingPage() {
     queryKey: ["settings"],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase
-          .from("app_settings")
-          .select("*")
-          .single();
-        
-        if (error || !data) {
-          return {
-            hero_title: "Préparez votre retraite sans sacrifier votre présent",
-            hero_subtitle: "Le Plan Épargne Retraite (PER) sur-mesure pour les professions libérales : optimisez votre fiscalité dès aujourd'hui.",
-            contact_email: "contact@premunia.fr",
-            contact_phone: "01 00 00 00 00",
-            contact_address: "828 Av. Roger Salengro, 92370 Chaville"
-          };
-        }
-        return data;
+        const response = await settingsApi.getSettings();
+        return {
+          hero_title: response.settings?.hero_title || "Préparez votre retraite sans sacrifier votre présent",
+          hero_subtitle: response.settings?.hero_subtitle || "Le Plan Épargne Retraite (PER) sur-mesure pour les professions libérales : optimisez votre fiscalité dès aujourd'hui.",
+          contact_email: response.settings?.contact_email || "contact@premunia.fr",
+          contact_phone: response.settings?.contact_phone || "01 00 00 00 00",
+          contact_address: response.settings?.contact_address || "828 Av. Roger Salengro, 92370 Chaville"
+        };
       } catch (err) {
-        console.error("[v0] Settings fetch error:", err);
+        console.error("[Landing] Settings fetch error:", err);
         return {
           hero_title: "Préparez votre retraite sans sacrifier votre présent",
           hero_subtitle: "Le Plan Épargne Retraite (PER) sur-mesure pour les professions libérales : optimisez votre fiscalité dès aujourd'hui.",
+          contact_email: "contact@premunia.fr",
+          contact_phone: "01 00 00 00 00",
+          contact_address: "828 Av. Roger Salengro, 92370 Chaville"
         };
       }
     },
@@ -79,28 +75,14 @@ export default function LandingPage() {
 
   const leadMutation = useMutation({
     mutationFn: async (formData: any) => {
-      try {
-        const { data, error } = await supabase
-          .from("leads")
-          .insert([
-            {
-              first_name: formData.first_name,
-              last_name: formData.last_name,
-              email: formData.email,
-              phone: formData.phone,
-              profession: formData.profession,
-              message: formData.message || '',
-              status: 'new',
-            }
-          ])
-          .select();
-        
-        if (error) throw new Error(error.message);
-        return data;
-      } catch (err) {
-        console.error("[v0] Lead submission error:", err);
-        throw err;
-      }
+      return await leadsApi.createLead({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone || null,
+        profession: formData.profession || null,
+        message: formData.message || ''
+      });
     },
     onSuccess: () => {
       toast.success("Demande envoyée ! Nous vous contacterons prochainement.");
@@ -108,7 +90,7 @@ export default function LandingPage() {
       if (form) form.reset();
     },
     onError: (error: any) => {
-      console.error("[v0] Lead error:", error.message);
+      console.error("[Landing] Lead error:", error.message);
       toast.error("Erreur lors de l'envoi. Veuillez réessayer.");
     },
   });

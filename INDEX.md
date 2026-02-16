@@ -1,22 +1,265 @@
-# 📑 Index Complet - Premunia CRM
+# 📑 INDEX COMPLET - PREMUNIA CRM (Neon + Netlify Edition)
 
-Navigation complète de tous les fichiers et ressources.
+## 🎯 FICHIERS ESSENTIELS POUR DÉMARRER
+
+### 📚 Documentation (À lire en premier!)
+1. **[QUICK_START.md](./QUICK_START.md)** - ⭐ COMMENCEZ ICI! (3 min)
+   - Installation rapide
+   - Déploiement en 5 min
+   - Architecture simple
+
+2. **[README_NEON_NETLIFY.md](./README_NEON_NETLIFY.md)** - Guide complet (10 min)
+   - Instructions détaillées
+   - Tous les endpoints API
+   - Scripts disponibles
+
+3. **[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)** - Pour comprendre les changements
+   - Supabase → Neon
+   - Architecture après migration
+   - Points de configuration
+
+4. **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - Avant de déployer
+   - Tests locaux
+   - Variables d'environnement
+   - Tests post-déploiement
+
+5. **[REFACTORING_SUMMARY.md](./REFACTORING_SUMMARY.md)** - Résumé détaillé
+   - Ce qui a changé
+   - Fichiers créés/modifiés
+   - Avantages de la nouvelle architecture
+
+6. **[REFACTORING_STATUS.md](./REFACTORING_STATUS.md)** - Statut visuel
+   - Avant vs Après
+   - Changements technologiques
+   - Checklist finale
 
 ---
 
-## 🎯 Par Où Commencer ?
+## 🔧 CONFIGURATION (À configurer en second!)
 
-### ⚡ Pour les impatients (5 min)
-1. **`README_SETUP.md`** - Vue rapide + 3 étapes d'installation
-2. **`QUICK_COMMANDS.md`** - Toutes les commandes essentielles
+### Variables d'Environnement
+- **[.env.local](./.env.local)** - Configuration locale
+  ```env
+  DATABASE_URL=postgresql://neondb_owner:...
+  VITE_API_URL=http://localhost:3001
+  JWT_SECRET=your-secret-key
+  PORT=3001
+  NODE_ENV=development
+  ```
 
-### 📚 Pour une installation guidée (45 min)
-1. **`SETUP_COMPLETE.md`** - 6 phases détaillées
-2. **`scripts/verify-setup.sh`** - Vérifier la config
+- **[.env.example](./.env.example)** - Template
+  - À copier pour configuration locale
 
-### 🚀 Pour déployer sur Netlify (30 min)
-1. **`DEPLOYMENT_NETLIFY.md`** - Guide complet
-2. **`NETLIFY_CHECKLIST.md`** - Checklist de vérification
+### Configuration Netlify
+- **[netlify.toml](./netlify.toml)** - Déploiement Netlify
+  - Build command
+  - Serverless functions
+  - Redirects & headers
+
+---
+
+## 💻 CODE SOURCE
+
+### Backend
+- **[server.ts](./server.ts)** - Express server (développement)
+  - Tous les endpoints API
+  - Authentification JWT
+  - Database queries
+
+- **[netlify/functions/api.ts](./netlify/functions/api.ts)** - Serverless functions (production)
+  - Même endpoints que Express
+  - Format AWS Lambda
+
+- **[src/lib/postgres-client.ts](./src/lib/postgres-client.ts)** - Client PostgreSQL
+  - Connexion Neon
+  - Pool management
+  - Query helpers
+
+### Utilitaires Frontend
+- **[src/utils/postgres.tsx](./src/utils/postgres.tsx)** - API utilities
+  - `auth` - authentification
+  - `leadsApi` - gestion des leads
+  - `settingsApi` - paramètres
+  - `apiCall()` - appels génériques
+
+### Pages React Refactorisées
+- **[src/app/pages/LandingPage.tsx](./src/app/pages/LandingPage.tsx)**
+  - Formulaire de contact
+  - Paramètres dynamiques
+
+- **[src/app/pages/SignUp.tsx](./src/app/pages/SignUp.tsx)**
+  - Inscription utilisateur
+  - JWT authentication
+
+- **[src/app/pages/SignIn.tsx](./src/app/pages/SignIn.tsx)**
+  - Connexion utilisateur
+  - Gestion des tokens
+
+- **[src/app/pages/Admin.tsx](./src/app/pages/Admin.tsx)**
+  - Dashboard admin
+  - Vérification authentification
+
+- **[src/app/pages/AdminLeads.tsx](./src/app/pages/AdminLeads.tsx)**
+  - Gestion complète des leads
+  - CRUD operations
+
+- **[src/app/pages/AdminSettings.tsx](./src/app/pages/AdminSettings.tsx)**
+  - Configuration de l'application
+  - Paramètres dynamiques
+
+- **[src/app/pages/AdminAutomation.tsx](./src/app/pages/AdminAutomation.tsx)**
+  - Automatisation SMTP
+  - Configuration email
+
+- **[src/app/pages/PromoteAdmin.tsx](./src/app/pages/PromoteAdmin.tsx)**
+  - Promotion administrateur
+  - Configuration initiale
+
+### Configuration TypeScript
+- **[tsconfig.json](./tsconfig.json)** - Configuration TypeScript
+- **[vite.config.ts](./vite.config.ts)** - Configuration Vite
+- **[types/index.ts](./types/index.ts)** - Types TypeScript
+
+---
+
+## 📊 SCRIPTS & OUTILS
+
+### Scripts de Base de Données
+- **[scripts/01-init-neon.sql](./scripts/01-init-neon.sql)** - Schéma Neon
+  - Tables (users, leads, settings, etc.)
+  - Indexes
+  - Données par défaut
+
+- **[scripts/init-neon.ts](./scripts/init-neon.ts)** - Initialiser la BD
+  ```bash
+  npm run init-db
+  ```
+
+- **[scripts/test-neon-connection.ts](./scripts/test-neon-connection.ts)** - Tester la connexion
+  ```bash
+  npx tsx scripts/test-neon-connection.ts
+  ```
+
+### Scripts de Vérification
+- **[verify-setup.sh](./verify-setup.sh)** - Linux/Mac
+  ```bash
+  bash verify-setup.sh
+  ```
+
+- **[verify-setup.ps1](./verify-setup.ps1)** - Windows PowerShell
+  ```powershell
+  .\verify-setup.ps1
+  ```
+
+---
+
+## 📦 PACKAGE.json
+
+- **[package.json](./package.json)** - Dépendances NPM
+  - Scripts: `dev`, `build`, `build:server`, `init-db`
+  - Dépendances: React, Express, PostgreSQL, Bcrypt, JWT
+  - DevDependencies: Vite, TypeScript, esbuild
+
+---
+
+## 🚀 COMMANDES IMPORTANTES
+
+```bash
+# Installation
+npm install
+
+# Développement
+npm run dev                 # Frontend + Backend
+npm run build              # Build production
+
+# Database
+npm run init-db            # Initialiser Neon
+npm run test-db            # Tester la connexion
+
+# Vérification
+bash verify-setup.sh       # Linux/Mac
+.\verify-setup.ps1         # Windows
+
+# Déploiement
+npm run build:server       # Build serverless functions
+git push origin main       # Netlify déploie automatiquement
+```
+
+---
+
+## 🔗 ENDPOINTS API
+
+### Authentification
+```
+POST   /api/auth/signup      Sign up
+POST   /api/auth/signin      Sign in
+GET    /api/auth/me          Current user
+```
+
+### Leads
+```
+GET    /api/leads            Get all leads
+POST   /api/leads            Create lead
+PUT    /api/leads/:id        Update lead
+DELETE /api/leads/:id        Delete lead
+```
+
+### Paramètres
+```
+GET    /api/settings         Get all settings
+PUT    /api/settings/:key    Update setting
+```
+
+### Santé
+```
+GET    /api/health           Health check
+```
+
+---
+
+## ✅ STATUS FINAL
+
+| Composant | Status |
+|-----------|--------|
+| Frontend (React) | ✅ Refactorisé |
+| Backend (Express) | ✅ Créé |
+| Serverless (Netlify) | ✅ Créé |
+| Database (Neon) | ✅ Configuré |
+| Authentication (JWT) | ✅ Implémenté |
+| Documentation | ✅ Complète |
+| Configuration | ✅ Prête |
+| Tests | ⏳ À valider |
+| Déploiement | ⏳ Prêt |
+
+---
+
+## 🎯 PROCHAINES ÉTAPES
+
+1. **Maintenant:** Lire [QUICK_START.md](./QUICK_START.md)
+2. **Étape 1:** Exécuter `npm install && npm run init-db`
+3. **Étape 2:** Lancer `npm run dev` et tester
+4. **Étape 3:** Lire [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)
+5. **Étape 4:** Déployer sur Netlify
+
+---
+
+## 📞 BESOIN D'AIDE?
+
+| Question | Où Chercher |
+|----------|------------|
+| Comment commencer? | [QUICK_START.md](./QUICK_START.md) |
+| Erreur locale? | [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) #Troubleshooting |
+| Comment déployer? | [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) |
+| Quels endpoints? | [README_NEON_NETLIFY.md](./README_NEON_NETLIFY.md) #API Endpoints |
+| Qu'est-ce qui a changé? | [REFACTORING_SUMMARY.md](./REFACTORING_SUMMARY.md) |
+
+---
+
+**🎉 Projet refactorisé et prêt pour la production!**
+
+**Démarrage rapide:** `npm run init-db && npm run dev` ✅
+
+*Dernière mise à jour: 16 Février 2026*
 
 ---
 

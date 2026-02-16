@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, apiCall } from "../../utils/supabase";
+import { leadsApi } from "../../utils/postgres";
 import { ArrowLeft, Search, Trash2, Edit, Phone, Mail } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -16,14 +16,14 @@ export default function AdminLeads() {
   // Fetch leads
   const { data: leadsData, isLoading } = useQuery({
     queryKey: ["admin-leads"],
-    queryFn: () => apiCall("/leads"),
+    queryFn: () => leadsApi.getLeads(),
   });
 
   const leads = leadsData?.leads || [];
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (leadId: string) => apiCall(`/leads/${leadId}`, { method: "DELETE" }),
+    mutationFn: (leadId: string) => leadsApi.deleteLead(leadId),
     onSuccess: () => {
       toast.success("Lead supprimé");
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
@@ -34,10 +34,7 @@ export default function AdminLeads() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
-      apiCall(`/leads/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
+      leadsApi.updateLead(id, data),
     onSuccess: () => {
       toast.success("Lead mis à jour");
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });

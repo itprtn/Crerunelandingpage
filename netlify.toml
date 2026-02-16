@@ -1,53 +1,53 @@
 # Netlify Configuration for Premunia CRM
-# Complete deployment setup with build, functions, and environment variables
+# Production deployment with Neon PostgreSQL backend
+# Hybrid deployment: React frontend + Express.js backend functions
 
 [build]
-  # Command to build the React application
-  command = "npm run build"
+  # Build the React frontend
+  command = "npm run build && npm run build:server"
   
-  # Directory containing the production build
+  # Frontend directory
   publish = "dist"
   
-  # Netlify Functions directory
+  # Backend serverless functions
   functions = "netlify/functions"
 
 # ============ BUILD CONTEXT: PRODUCTION ============
 [context.production]
-  command = "npm run build"
+  command = "npm run build && npm run build:server"
   publish = "dist"
+  
+  # Production environment variables
+  [context.production.environment]
+    NODE_ENV = "production"
+    VITE_API_URL = "/.netlify/functions/api"
+    DATABASE_URL = "postgresql://neondb_owner:npg_KPsQzMwm07tj@ep-muddy-base-aenbm79t-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    JWT_SECRET = "change-this-in-production"
 
 # ============ BUILD CONTEXT: PREVIEW ============
 [context.deploy-preview]
-  command = "npm run build"
+  command = "npm run build && npm run build:server"
+  
+  [context.deploy-preview.environment]
+    NODE_ENV = "preview"
+    VITE_API_URL = "/.netlify/functions/api"
 
 # ============ BUILD CONTEXT: BRANCH ============
 [context.branch-deploy]
-  command = "npm run build"
+  command = "npm run build && npm run build:server"
 
 # ============ REDIRECTS & REWRITES ============
-# Redirect all non-file requests to index.html for React Router
+# Frontend routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# ============ HEADERS ============
-[[headers]]
-  for = "/*"
-  
-  [headers.values]
-    # Security headers
-    X-Frame-Options = "SAMEORIGIN"
-    X-Content-Type-Options = "nosniff"
-    X-XSS-Protection = "1; mode=block"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    
-    # CORS headers for API calls
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "Content-Type, Authorization"
-    
-    # Performance headers
+# API proxy to serverless functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api:splat"
+  status = 200
     Cache-Control = "public, max-age=3600, must-revalidate"
 
 # Cache specific file types

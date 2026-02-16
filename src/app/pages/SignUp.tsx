@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { Mail, Lock, User, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router";
-import { API_URL } from "../../utils/supabase";
-import { supabase } from "../../utils/supabase";
+import { auth } from "../../utils/postgres";
 
 export default function SignUp() {
   const [name, setName] = useState("");
@@ -17,30 +16,17 @@ export default function SignUp() {
     setLoading(true);
 
     try {
-      // Call the backend to create the user
-      const res = await fetch(`${API_URL}/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name }),
-      });
+      const [firstName, ...lastNameParts] = name.split(' ');
+      const lastName = lastNameParts.join(' ') || '';
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Erreur lors de la création du compte");
+      const response = await auth.signUp(email, password, firstName, lastName);
+
+      if (response.token) {
+        toast.success("Compte créé avec succès !");
+        navigate("/promote-admin");
       }
-
-      // Now sign in with the created user
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) throw signInError;
-
-      toast.success("Compte créé avec succès !");
-      navigate("/promote-admin");
     } catch (error: any) {
-      console.error("Sign up error:", error);
+      console.error("[SignUp] Error:", error);
       toast.error(error.message || "Erreur lors de la création du compte");
     } finally {
       setLoading(false);

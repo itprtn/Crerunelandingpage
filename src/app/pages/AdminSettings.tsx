@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiCall } from "../../utils/supabase";
+import { settingsApi } from "../../utils/postgres";
 import { ArrowLeft, Save } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -12,7 +12,10 @@ export default function AdminSettings() {
   // Fetch settings
   const { data: settings, isLoading } = useQuery({
     queryKey: ["settings"],
-    queryFn: () => apiCall("/settings"),
+    queryFn: async () => {
+      const response = await settingsApi.getSettings();
+      return response.settings;
+    },
   });
 
   const [formData, setFormData] = useState({

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { supabase, apiCall } from "../../utils/supabase";
+import { auth } from "../../utils/postgres";
 import { toast } from "sonner";
 import { Shield, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -11,11 +11,18 @@ export default function PromoteAdmin() {
   const handlePromote = async () => {
     setLoading(true);
     try {
-      await apiCall("/promote-admin", { method: "POST" });
+      // Call API to promote user to admin
+      await fetch('/api/auth/promote', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
       toast.success("Vous êtes maintenant administrateur !");
       setTimeout(() => navigate("/admin"), 1500);
     } catch (error: any) {
-      console.error("Promotion error:", error);
+      console.error("[PromoteAdmin] Error:", error);
       toast.error(error.message || "Erreur lors de la promotion");
     } finally {
       setLoading(false);

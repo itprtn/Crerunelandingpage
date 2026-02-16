@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase, apiCall } from "../../utils/supabase";
+import { auth, leadsApi } from "../../utils/postgres";
 import {
   Users,
   Mail,
@@ -19,10 +19,8 @@ export default function Admin() {
   // Check if user is authenticated
   useEffect(() => {
     const checkAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
+      const user = await auth.getCurrentUser();
+      if (!user) {
         navigate("/signin");
       }
     };
@@ -32,15 +30,15 @@ export default function Admin() {
   // Fetch leads
   const { data: leadsData } = useQuery({
     queryKey: ["admin-leads"],
-    queryFn: () => apiCall("/leads"),
+    queryFn: () => leadsApi.getLeads(),
   });
 
   const leads = leadsData?.leads || [];
   const newLeads = leads.filter((l: any) => l.status === "new").length;
   const totalLeads = leads.length;
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    auth.signOut();
     toast.success("Déconnexion réussie");
     navigate("/signin");
   };
