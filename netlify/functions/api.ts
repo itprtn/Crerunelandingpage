@@ -5,28 +5,65 @@
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import { Pool } from 'pg';
+import { Pool, QueryResult } from 'pg';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-// Validate environment variables
+// ============================================================
+// DATABASE SETUP
+// ============================================================
+
 const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  console.error('[API] ERROR: DATABASE_URL environment variable not set');
-}
-
-// Initialize database connection
-const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
-
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
+let pool: Pool | null = null;
+
+// Initialize pool on first use
+function getPool(): Pool {
+  if (pool) return pool;
+  
+  if (!DATABASE_URL) {
+    const msg = 'DATABASE_URL not configured';
+    console.error('[API] FATAL:', msg);
+    throw new Error(msg);
+  }
+
+  try {
+    pool = new Pool({
+      connectionString: DATABASE_URL,
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    pool.on('error', (err) => {
+      console.error('[POOL] Error:', err);
+    });
+
+    console.log('[API] Pool initialized');
+    return pool;
+  } catch (error) {
+    const msg = `Failed to create pool: ${error}`;
+    console.error('[API] FATAL:', msg);
+    throw error;
+  }
+}
+
+async function query(text: string, params?: any[]): Promise<QueryResult> {
+  const p = getPool();
+  try {
+    return await p.query(text, params);
+  } catch (error: any) {
+    console.error('[API] Query failed:', error.message);
+    throw error;
+  }
+}
+
 // Authentication middleware
-const authenticateToken = (headers: any): string | null => {
+function authenticateToken(headers: any): string | null {
   const authHeader = headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -38,34 +75,28 @@ const authenticateToken = (headers: any): string | null => {
   } catch (error) {
     return null;
   }
+}
+
+// ============================================================
+// CORS HEADERS
+// ============================================================
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// Query helper
-const query = async (text: string, params?: any[]) => {
-  try {
-    return await pool.query(text, params);
-  } catch (error) {
-    console.error('[API] Query error:', error);
-    throw error;
-  }
-};
+// ============================================================
+// MAIN HANDLER
+// ============================================================
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   const { httpMethod, path, body, headers } = event;
 
-  // Log request
   console.log(`[API] ${httpMethod} ${path}`);
 
-  // Netlify automatically strips `/.netlify/functions/` from the path
-  // So we receive `/api/auth/signup` instead of `/.netlify/functions/api/auth/signup`
-  
-  // CORS
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
-
+  // CORS preflight
   if (httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -78,7 +109,39 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     const bodyData = body ? JSON.parse(body) : {};
     const userId = authenticateToken(headers);
 
+    // ============================================================
+    // HEALTH CHECK (no auth required)
+    // ============================================================
+    if (path === '/api/health' || path === '/api/health/' || path === '/api') {
+      try {
+        const result = await query('SELECT NOW()');
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            status: 'ok', 
+            timestamp: new Date().toISOString(),
+            database: 'connected'
+          }),
+        };
+      } catch (error: any) {
+        return {
+          statusCode: 503,
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            status: 'error',
+            error: 'Database connection failed',
+            details: error.message
+          }),
+        };
+      }
+    }
+
+    // ============================================================
     // AUTH ROUTES
+    // ============================================================
+
+    // Sign up
     if (path === '/api/auth/signup' && httpMethod === 'POST') {
       const { email, password, first_name, last_name } = bodyData;
 
@@ -93,7 +156,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       try {
         const passwordHash = await bcrypt.hash(password, 10);
         const result = await query(
-          'INSERT INTO users (email, password_hash, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING id, email, first_name, last_name',
+          'INSERT INTO users (email, password_hash, first_name, last_name, is_active) VALUES ($1, $2, $3, $4, true) RETURNING id, email, first_name, last_name',
           [email, passwordHash, first_name || '', last_name || '']
         );
 
@@ -292,21 +355,36 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
     // SETTINGS ROUTES
     if (path === '/api/settings' && httpMethod === 'GET') {
-      const result = await query('SELECT * FROM app_settings ORDER BY key');
+      try {
+        const result = await query('SELECT * FROM app_settings ORDER BY key');
 
-      const settings: Record<string, any> = {};
-      result.rows.forEach((row: any) => {
-        settings[row.key] = row.value;
-      });
+        const settings: Record<string, any> = {};
+        result.rows.forEach((row: any) => {
+          settings[row.key] = row.value;
+        });
 
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify({
-          success: true,
-          settings,
-        }),
-      };
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            success: true,
+            settings: settings || {},
+          }),
+        };
+      } catch (error: any) {
+        // If table doesn't exist, return empty settings
+        if (error.code === '42P01') {
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              success: true,
+              settings: {},
+            }),
+          };
+        }
+        throw error;
+      }
     }
 
     // HEALTH CHECK
