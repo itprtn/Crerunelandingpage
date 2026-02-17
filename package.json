@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"tsx watch server.ts\"",
     "build": "vite build",
-    "build:server": "esbuild server.ts --bundle --platform=node --outfile=netlify/functions/api.js --external:pg --external:jsonwebtoken",
+    "build:server": "esbuild netlify/functions/api.ts --bundle --platform=node --outfile=netlify/functions/api.js --external:pg --external:jsonwebtoken",
     "preview": "vite preview",
     "init-db": "tsx scripts/init-neon.ts"
   },
