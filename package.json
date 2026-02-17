@@ -8,7 +8,8 @@
     "build": "vite build",
     "build:server": "esbuild netlify/functions/api.ts --bundle --platform=node --outfile=netlify/functions/api.js --external:pg --external:jsonwebtoken",
     "preview": "vite preview",
-    "init-db": "tsx scripts/init-neon.ts"
+    "init-db": "tsx scripts/init-neon.ts",
+    "vercel-build": "pnpm install && pnpm run build"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

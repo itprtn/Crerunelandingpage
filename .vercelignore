@@ -1,0 +1,6 @@
+netlify/
+.netlify/
+node_modules/
+.git/
+.gitignore
+*.md
