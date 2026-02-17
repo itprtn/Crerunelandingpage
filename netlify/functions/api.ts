@@ -374,6 +374,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       } catch (error: any) {
         // If table doesn't exist, return empty settings
         if (error.code === '42P01') {
+          console.log('[API] Settings table does not exist, returning empty settings');
           return {
             statusCode: 200,
             headers: corsHeaders,
@@ -383,6 +384,40 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
             }),
           };
         }
+        console.error('[API] Settings fetch error:', error.message);
+        throw error;
+      }
+    }
+
+    // LEADS ROUTES with auth check
+    if (path === '/leads' && httpMethod === 'GET') {
+      try {
+        const result = await query(
+          'SELECT id, first_name, last_name, email, phone, profession, message, notes, status, created_at, updated_at FROM leads ORDER BY created_at DESC'
+        );
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            success: true,
+            leads: result.rows,
+          }),
+        };
+      } catch (error: any) {
+        // If table doesn't exist, return empty leads
+        if (error.code === '42P01') {
+          console.log('[API] Leads table does not exist, returning empty leads');
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              success: true,
+              leads: [],
+            }),
+          };
+        }
+        console.error('[API] Leads fetch error:', error.message);
         throw error;
       }
     }

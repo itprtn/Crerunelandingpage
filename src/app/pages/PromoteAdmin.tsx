@@ -12,7 +12,8 @@ export default function PromoteAdmin() {
     setLoading(true);
     try {
       // Call API to promote user to admin
-      await fetch('/api/auth/promote', {
+      const baseUrl = import.meta.env.VITE_API_URL || '/.netlify/functions/api';
+      await fetch(`${baseUrl}/auth/promote`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
