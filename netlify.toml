@@ -11,6 +11,10 @@
   
   # Backend serverless functions
   functions = "netlify/functions"
+  
+  # Environment for build (must install devDependencies)
+  [build.environment]
+    NODE_ENV = "development"
 
 # ============ BUILD CONTEXT: PRODUCTION ============
 [context.production]
