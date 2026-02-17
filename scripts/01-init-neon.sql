@@ -18,11 +18,6 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-  last_name VARCHAR(255),
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_is_active ON users(is_active);
@@ -98,3 +93,24 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at DESC);
 CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+
+-- ============================================================
+-- SAMPLE DATA (Optional)
+-- ============================================================
+
+-- Create a test admin user
+-- Note: For password, use bcryptjs to hash "admin123"
+-- Hash example: $2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36DRcT3e
+INSERT INTO users (email, password_hash, first_name, last_name, is_active) VALUES
+('admin@test.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36DRcT3e', 'Admin', 'Test', true)
+ON CONFLICT (email) DO NOTHING;
+
+-- Assign admin role
+INSERT INTO user_roles (user_id, role)
+SELECT id, 'admin' FROM users WHERE email = 'admin@test.com'
+ON CONFLICT (user_id) DO NOTHING;
+
+-- ============================================================
+-- DONE - DATABASE SCHEMA INITIALIZED
+-- ============================================================
+
