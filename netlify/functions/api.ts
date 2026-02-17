@@ -112,7 +112,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // ============================================================
     // HEALTH CHECK (no auth required)
     // ============================================================
-    if (path === '/api/health' || path === '/api/health/' || path === '/api') {
+    if (path === '/health' || path === '/health/' || path === '' || path === '/') {
       try {
         const result = await query('SELECT NOW()');
         return {
@@ -142,7 +142,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // ============================================================
 
     // Sign up
-    if (path === '/api/auth/signup' && httpMethod === 'POST') {
+    if (path === '/auth/signup' && httpMethod === 'POST') {
       const { email, password, first_name, last_name } = bodyData;
 
       if (!email || !password) {
@@ -187,7 +187,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       }
     }
 
-    if (path === '/api/auth/signin' && httpMethod === 'POST') {
+    if (path === '/auth/signin' && httpMethod === 'POST') {
       const { email, password } = bodyData;
 
       if (!email || !password) {
@@ -250,7 +250,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       };
     }
 
-    if (path === '/api/auth/me' && httpMethod === 'GET') {
+    if (path === '/auth/me' && httpMethod === 'GET') {
       if (!userId) {
         return {
           statusCode: 401,
@@ -290,7 +290,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
 
     // LEADS ROUTES
-    if (path === '/api/leads' && httpMethod === 'GET') {
+    if (path === '/leads' && httpMethod === 'GET') {
       if (!userId) {
         return {
           statusCode: 401,
@@ -313,7 +313,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       };
     }
 
-    if (path === '/api/leads' && httpMethod === 'POST') {
+    if (path === '/leads' && httpMethod === 'POST') {
       const { first_name, last_name, email, phone, profession, message } = bodyData;
 
       if (!first_name || !last_name || !email) {
@@ -354,7 +354,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
 
     // SETTINGS ROUTES
-    if (path === '/api/settings' && httpMethod === 'GET') {
+    if (path === '/settings' && httpMethod === 'GET') {
       try {
         const result = await query('SELECT * FROM app_settings ORDER BY key');
 
@@ -388,7 +388,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
 
     // HEALTH CHECK
-    if (path === '/api/health') {
+    if (path === '/health') {
       return {
         statusCode: 200,
         headers: corsHeaders,
