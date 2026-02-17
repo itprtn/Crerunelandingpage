@@ -11,10 +11,6 @@
   
   # Backend serverless functions
   functions = "netlify/functions"
-  
-  # Environment for build (must install devDependencies)
-  [build.environment]
-    NODE_ENV = "development"
 
 # ============ BUILD CONTEXT: PRODUCTION ============
 [context.production]
@@ -23,7 +19,7 @@
   
   # Production environment variables
   [context.production.environment]
-    NODE_ENV = "production"
+    NODE_ENV = "development"
     VITE_API_URL = "/.netlify/functions/api"
     DATABASE_URL = "postgresql://neondb_owner:npg_KPsQzMwm07tj@ep-muddy-base-aenbm79t-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     JWT_SECRET = "change-this-in-production"
