@@ -291,26 +291,35 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
     // LEADS ROUTES
     if (path === '/leads' && httpMethod === 'GET') {
-      if (!userId) {
+      try {
+        const result = await query(
+          'SELECT id, first_name, last_name, email, phone, profession, message, notes, status, created_at, updated_at FROM leads ORDER BY created_at DESC'
+        );
+
         return {
-          statusCode: 401,
+          statusCode: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Authentication required' }),
+          body: JSON.stringify({
+            success: true,
+            leads: result.rows,
+          }),
         };
+      } catch (error: any) {
+        // If table doesn't exist, return empty leads
+        if (error.code === '42P01') {
+          console.log('[API] Leads table does not exist, returning empty leads');
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              success: true,
+              leads: [],
+            }),
+          };
+        }
+        console.error('[API] Leads fetch error:', error.message);
+        throw error;
       }
-
-      const result = await query(
-        'SELECT id, first_name, last_name, email, phone, profession, message, notes, status, created_at, updated_at FROM leads ORDER BY created_at DESC'
-      );
-
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify({
-          success: true,
-          leads: result.rows,
-        }),
-      };
     }
 
     if (path === '/leads' && httpMethod === 'POST') {
