@@ -8,7 +8,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { query, transaction } from '../src/lib/postgres-client';
+import { query, transaction } from './src/lib/postgres-client';
 
 dotenv.config();
 
