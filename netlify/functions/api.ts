@@ -7,7 +7,7 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 // Validate environment variables
 const DATABASE_URL = process.env.DATABASE_URL;
