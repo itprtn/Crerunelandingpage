@@ -20,7 +20,7 @@
   # Production environment variables
   [context.production.environment]
     NODE_ENV = "development"
-    VITE_API_URL = "/.netlify/functions/api"
+    VITE_API_URL = "/.netlify/functions"
     DATABASE_URL = "postgresql://neondb_owner:npg_KPsQzMwm07tj@ep-muddy-base-aenbm79t-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     JWT_SECRET = "change-this-in-production"
 
@@ -30,7 +30,7 @@
   
   [context.deploy-preview.environment]
     NODE_ENV = "preview"
-    VITE_API_URL = "/.netlify/functions/api"
+    VITE_API_URL = "/.netlify/functions"
 
 # ============ BUILD CONTEXT: BRANCH ============
 [context.branch-deploy]
@@ -42,13 +42,6 @@
   from = "/*"
   to = "/index.html"
   status = 200
-
-# API proxy to serverless functions
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api:splat"
-  status = 200
-    Cache-Control = "public, max-age=3600, must-revalidate"
 
 # Cache specific file types
 [[headers]]

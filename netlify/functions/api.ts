@@ -9,9 +9,15 @@ import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
+// Validate environment variables
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error('[API] ERROR: DATABASE_URL environment variable not set');
+}
+
 // Initialize database connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
   },
@@ -47,6 +53,12 @@ const query = async (text: string, params?: any[]) => {
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   const { httpMethod, path, body, headers } = event;
 
+  // Log request
+  console.log(`[API] ${httpMethod} ${path}`);
+
+  // Netlify automatically strips `/.netlify/functions/` from the path
+  // So we receive `/api/auth/signup` instead of `/.netlify/functions/api/auth/signup`
+  
   // CORS
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -67,7 +79,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     const userId = authenticateToken(headers);
 
     // AUTH ROUTES
-    if (path === '/.netlify/functions/api/auth/signup' && httpMethod === 'POST') {
+    if (path === '/api/auth/signup' && httpMethod === 'POST') {
       const { email, password, first_name, last_name } = bodyData;
 
       if (!email || !password) {
@@ -112,7 +124,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       }
     }
 
-    if (path === '/.netlify/functions/api/auth/signin' && httpMethod === 'POST') {
+    if (path === '/api/auth/signin' && httpMethod === 'POST') {
       const { email, password } = bodyData;
 
       if (!email || !password) {
@@ -175,7 +187,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       };
     }
 
-    if (path === '/.netlify/functions/api/auth/me' && httpMethod === 'GET') {
+    if (path === '/api/auth/me' && httpMethod === 'GET') {
       if (!userId) {
         return {
           statusCode: 401,
@@ -215,7 +227,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
 
     // LEADS ROUTES
-    if (path === '/.netlify/functions/api/leads' && httpMethod === 'GET') {
+    if (path === '/api/leads' && httpMethod === 'GET') {
       if (!userId) {
         return {
           statusCode: 401,
@@ -238,7 +250,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       };
     }
 
-    if (path === '/.netlify/functions/api/leads' && httpMethod === 'POST') {
+    if (path === '/api/leads' && httpMethod === 'POST') {
       const { first_name, last_name, email, phone, profession, message } = bodyData;
 
       if (!first_name || !last_name || !email) {
@@ -279,7 +291,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
 
     // SETTINGS ROUTES
-    if (path === '/.netlify/functions/api/settings' && httpMethod === 'GET') {
+    if (path === '/api/settings' && httpMethod === 'GET') {
       const result = await query('SELECT * FROM app_settings ORDER BY key');
 
       const settings: Record<string, any> = {};
@@ -298,7 +310,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
 
     // HEALTH CHECK
-    if (path === '/.netlify/functions/api/health') {
+    if (path === '/api/health') {
       return {
         statusCode: 200,
         headers: corsHeaders,
