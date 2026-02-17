@@ -4,7 +4,7 @@
 
 [build]
   # Build the React frontend
-  command = "npm ci --legacy-peer-deps && npm run build && npm run build:server"
+  command = "pnpm install --frozen-lockfile && pnpm run build && pnpm run build:server"
   
   # Frontend directory
   publish = "dist"
@@ -14,7 +14,7 @@
 
 # ============ BUILD CONTEXT: PRODUCTION ============
 [context.production]
-  command = "npm ci --legacy-peer-deps && npm run build && npm run build:server"
+  command = "pnpm install --frozen-lockfile && pnpm run build && pnpm run build:server"
   publish = "dist"
   
   # Production environment variables
@@ -26,7 +26,7 @@
 
 # ============ BUILD CONTEXT: PREVIEW ============
 [context.deploy-preview]
-  command = "npm ci --legacy-peer-deps && npm run build && npm run build:server"
+  command = "pnpm install --frozen-lockfile && pnpm run build && pnpm run build:server"
   
   [context.deploy-preview.environment]
     NODE_ENV = "preview"
@@ -34,7 +34,7 @@
 
 # ============ BUILD CONTEXT: BRANCH ============
 [context.branch-deploy]
-  command = "npm ci --legacy-peer-deps && npm run build && npm run build:server"
+  command = "pnpm install --frozen-lockfile && pnpm run build && pnpm run build:server"
 
 # ============ REDIRECTS & REWRITES ============
 # Frontend routing
