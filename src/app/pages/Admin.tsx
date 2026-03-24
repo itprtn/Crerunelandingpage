@@ -1,17 +1,18 @@
 import React, { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase, apiCall } from "../../utils/supabase";
+import { supabase } from "../../utils/supabase";
 import {
   Users,
   Mail,
   TrendingUp,
-  Settings,
-  LogOut,
-  Zap,
   FileText,
+  Settings,
+  Zap,
+  ArrowUpRight,
+  Calendar,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { toast } from "sonner";
+import AdminLayout from "../../components/AdminLayout";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -29,224 +30,228 @@ export default function Admin() {
     checkAuth();
   }, [navigate]);
 
-  // Fetch leads
-  const { data: leadsData } = useQuery({
+  // Fetch leads directly from Supabase
+  const { data: leads = [], isLoading } = useQuery({
     queryKey: ["admin-leads"],
-    queryFn: () => apiCall("/leads"),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) {
+        console.error("[v0] Error fetching leads:", error);
+        throw error;
+      }
+      return data || [];
+    },
   });
 
-  const leads = leadsData?.leads || [];
   const newLeads = leads.filter((l: any) => l.status === "new").length;
+  const contactedLeads = leads.filter((l: any) => l.status === "contacted").length;
   const totalLeads = leads.length;
+  const conversionRate = totalLeads > 0 ? Math.round((contactedLeads / totalLeads) * 100) : 0;
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success("Déconnexion réussie");
-    navigate("/signin");
-  };
+  // Get leads from last 7 days
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recentLeads = leads.filter((l: any) => new Date(l.created_at) > sevenDaysAgo).length;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <img
-                src="https://ucarecdn.com/8796d3aa-4089-4859-87df-1772ce670f61/-/format/auto/"
-                alt="Premunia Logo"
-                className="h-8 w-auto"
-              />
-              <span className="text-slate-400">|</span>
-              <h1 className="text-xl font-bold text-slate-800">
-                Dashboard Admin
-              </h1>
+    <AdminLayout title="Dashboard" subtitle="Vue d'ensemble de votre activite">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-50 rounded-xl flex items-center justify-center">
+              <Users className="text-[#F79E1B]" size={24} />
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-[#EE3B33] transition-colors"
-            >
-              <LogOut size={18} />
-              Déconnexion
-            </button>
+            <span className="text-3xl font-bold text-slate-900">{totalLeads}</span>
           </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <Users className="text-[#F79E1B]" size={24} />
-              </div>
-              <span className="text-2xl font-bold text-slate-800">
-                {totalLeads}
-              </span>
-            </div>
-            <h3 className="text-slate-600 font-medium">Total Leads</h3>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                <Mail className="text-[#EE3B33]" size={24} />
-              </div>
-              <span className="text-2xl font-bold text-slate-800">
-                {newLeads}
-              </span>
-            </div>
-            <h3 className="text-slate-600 font-medium">Nouveaux Leads</h3>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <TrendingUp className="text-green-600" size={24} />
-              </div>
-              <span className="text-2xl font-bold text-slate-800">
-                {totalLeads > 0
-                  ? Math.round((newLeads / totalLeads) * 100)
-                  : 0}
-                %
-              </span>
-            </div>
-            <h3 className="text-slate-600 font-medium">Taux de nouveaux</h3>
-          </div>
+          <h3 className="text-slate-600 font-medium">Total Leads</h3>
+          <p className="text-xs text-slate-400 mt-1">Tous les prospects</p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 mb-8">
-          <h2 className="text-xl font-bold text-slate-800 mb-6">
-            Actions rapides
-          </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button
-              onClick={() => navigate("/admin/leads")}
-              className="p-6 bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-xl hover:shadow-lg transition-all group"
-            >
-              <FileText className="text-[#F79E1B] mb-3 group-hover:scale-110 transition-transform" size={32} />
-              <h3 className="font-bold text-slate-800 mb-1">Gérer les Leads</h3>
-              <p className="text-sm text-slate-500">
-                Voir et gérer tous vos prospects
-              </p>
-            </button>
-
-            <button
-              onClick={() => navigate("/admin/settings")}
-              className="p-6 bg-gradient-to-br from-red-50 to-white border border-red-100 rounded-xl hover:shadow-lg transition-all group"
-            >
-              <Settings className="text-[#EE3B33] mb-3 group-hover:scale-110 transition-transform" size={32} />
-              <h3 className="font-bold text-slate-800 mb-1">Paramètres</h3>
-              <p className="text-sm text-slate-500">
-                Configurer le site et les textes
-              </p>
-            </button>
-
-            <button
-              onClick={() => navigate("/admin/automation")}
-              className="p-6 bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-xl hover:shadow-lg transition-all group"
-            >
-              <Zap className="text-[#880E4F] mb-3 group-hover:scale-110 transition-transform" size={32} />
-              <h3 className="font-bold text-slate-800 mb-1">Automatisation</h3>
-              <p className="text-sm text-slate-500">
-                Emails et workflows automatiques
-              </p>
-            </button>
-
-            <button
-              onClick={() => navigate("/")}
-              className="p-6 bg-gradient-to-br from-slate-50 to-white border border-slate-100 rounded-xl hover:shadow-lg transition-all group"
-            >
-              <Users className="text-slate-600 mb-3 group-hover:scale-110 transition-transform" size={32} />
-              <h3 className="font-bold text-slate-800 mb-1">Voir le Site</h3>
-              <p className="text-sm text-slate-500">
-                Retour à la landing page
-              </p>
-            </button>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-red-100 to-red-50 rounded-xl flex items-center justify-center">
+              <Mail className="text-[#EE3B33]" size={24} />
+            </div>
+            <span className="text-3xl font-bold text-slate-900">{newLeads}</span>
           </div>
+          <h3 className="text-slate-600 font-medium">Nouveaux</h3>
+          <p className="text-xs text-slate-400 mt-1">A contacter</p>
         </div>
 
-        {/* Recent Leads */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-          <h2 className="text-xl font-bold text-slate-800 mb-6">
-            Derniers leads
-          </h2>
-          {leads.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <Mail size={48} className="mx-auto mb-4 opacity-50" />
-              <p>Aucun lead pour le moment</p>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-50 rounded-xl flex items-center justify-center">
+              <TrendingUp className="text-green-600" size={24} />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="text-left py-3 px-4 font-semibold text-slate-600 text-sm">
-                      Nom
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-600 text-sm">
-                      Email
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-600 text-sm">
-                      Profession
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-600 text-sm">
-                      Statut
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-600 text-sm">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leads.slice(0, 5).map((lead: any) => (
-                    <tr
-                      key={lead.id}
-                      className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="py-3 px-4 font-medium text-slate-800">
-                        {lead.first_name} {lead.last_name}
-                      </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {lead.email}
-                      </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {lead.profession}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                            lead.status === "new"
-                              ? "bg-orange-100 text-[#F79E1B]"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {lead.status === "new" ? "Nouveau" : lead.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-500 text-sm">
-                        {new Date(lead.created_at).toLocaleDateString("fr-FR")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <span className="text-3xl font-bold text-slate-900">{conversionRate}%</span>
+          </div>
+          <h3 className="text-slate-600 font-medium">Taux de contact</h3>
+          <p className="text-xs text-slate-400 mt-1">Leads contactes</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center">
+              <Calendar className="text-blue-600" size={24} />
             </div>
-          )}
-          {leads.length > 5 && (
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => navigate("/admin/leads")}
-                className="text-[#EE3B33] font-semibold hover:underline"
-              >
-                Voir tous les leads →
-              </button>
-            </div>
-          )}
+            <span className="text-3xl font-bold text-slate-900">{recentLeads}</span>
+          </div>
+          <h3 className="text-slate-600 font-medium">Cette semaine</h3>
+          <p className="text-xs text-slate-400 mt-1">7 derniers jours</p>
         </div>
       </div>
-    </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <button
+          onClick={() => navigate("/admin/leads")}
+          className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-orange-200 transition-all group text-left"
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-400 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+              <FileText className="text-white" size={28} />
+            </div>
+            <ArrowUpRight className="text-slate-300 group-hover:text-orange-500 transition-colors" size={24} />
+          </div>
+          <h3 className="font-bold text-slate-900 text-lg mb-1">Gerer les Leads</h3>
+          <p className="text-sm text-slate-500">
+            Voir, editer et suivre tous vos prospects
+          </p>
+          {newLeads > 0 && (
+            <span className="inline-block mt-3 px-3 py-1 bg-orange-100 text-orange-600 text-xs font-semibold rounded-full">
+              {newLeads} nouveau{newLeads > 1 ? "x" : ""}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => navigate("/admin/settings")}
+          className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-red-200 transition-all group text-left"
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-14 h-14 bg-gradient-to-br from-[#EE3B33] to-[#880E4F] rounded-2xl flex items-center justify-center shadow-lg shadow-red-500/20">
+              <Settings className="text-white" size={28} />
+            </div>
+            <ArrowUpRight className="text-slate-300 group-hover:text-red-500 transition-colors" size={24} />
+          </div>
+          <h3 className="font-bold text-slate-900 text-lg mb-1">Parametres</h3>
+          <p className="text-sm text-slate-500">
+            Configurer le site et les informations
+          </p>
+        </button>
+
+        <button
+          onClick={() => navigate("/admin/automation")}
+          className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-purple-200 transition-all group text-left"
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+              <Zap className="text-white" size={28} />
+            </div>
+            <ArrowUpRight className="text-slate-300 group-hover:text-purple-500 transition-colors" size={24} />
+          </div>
+          <h3 className="font-bold text-slate-900 text-lg mb-1">Automatisation</h3>
+          <p className="text-sm text-slate-500">
+            Emails et workflows automatiques
+          </p>
+        </button>
+      </div>
+
+      {/* Recent Leads Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Derniers leads</h2>
+            <p className="text-sm text-slate-500 mt-1">Les 5 derniers prospects recus</p>
+          </div>
+          <button
+            onClick={() => navigate("/admin/leads")}
+            className="text-sm font-semibold text-[#EE3B33] hover:underline flex items-center gap-1"
+          >
+            Voir tout
+            <ArrowUpRight size={16} />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="p-12 text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-slate-200 border-t-[#EE3B33] rounded-full mx-auto"></div>
+            <p className="text-slate-400 mt-4">Chargement...</p>
+          </div>
+        ) : leads.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail size={32} className="text-slate-300" />
+            </div>
+            <p className="text-slate-500 font-medium">Aucun lead pour le moment</p>
+            <p className="text-slate-400 text-sm mt-1">Les nouveaux prospects apparaitront ici</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left py-4 px-6 font-semibold text-slate-600 text-sm">Nom</th>
+                  <th className="text-left py-4 px-6 font-semibold text-slate-600 text-sm">Email</th>
+                  <th className="text-left py-4 px-6 font-semibold text-slate-600 text-sm">Profession</th>
+                  <th className="text-left py-4 px-6 font-semibold text-slate-600 text-sm">Statut</th>
+                  <th className="text-left py-4 px-6 font-semibold text-slate-600 text-sm">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leads.slice(0, 5).map((lead: any) => (
+                  <tr
+                    key={lead.id}
+                    className="border-t border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+                    onClick={() => navigate("/admin/leads")}
+                  >
+                    <td className="py-4 px-6">
+                      <div className="font-medium text-slate-900">
+                        {lead.first_name} {lead.last_name}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-slate-600">{lead.email}</td>
+                    <td className="py-4 px-6 text-slate-600">{lead.profession}</td>
+                    <td className="py-4 px-6">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                          lead.status === "new"
+                            ? "bg-orange-100 text-orange-600"
+                            : lead.status === "contacted"
+                            ? "bg-blue-100 text-blue-600"
+                            : lead.status === "converted"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {lead.status === "new"
+                          ? "Nouveau"
+                          : lead.status === "contacted"
+                          ? "Contacte"
+                          : lead.status === "converted"
+                          ? "Converti"
+                          : lead.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-slate-500 text-sm">
+                      {new Date(lead.created_at).toLocaleDateString("fr-FR", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </AdminLayout>
   );
 }

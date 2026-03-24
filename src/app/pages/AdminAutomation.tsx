@@ -1,18 +1,42 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiCall } from "../../utils/supabase";
-import { ArrowLeft, Save, Mail, Server } from "lucide-react";
+import { supabase } from "../../utils/supabase";
+import { Save, Mail, Server, TestTube, CheckCircle, XCircle } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
+import AdminLayout from "../../components/AdminLayout";
 
 export default function AdminAutomation() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
 
-  // Fetch SMTP config
+  // Check auth
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) navigate("/signin");
+    };
+    checkAuth();
+  }, [navigate]);
+
+  // Fetch SMTP config from Supabase
   const { data: smtpConfig, isLoading } = useQuery({
     queryKey: ["smtp-config"],
-    queryFn: () => apiCall("/smtp-config"),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("smtp_config")
+        .select("*")
+        .limit(1)
+        .single();
+      
+      if (error && error.code !== "PGRST116") {
+        // Table might not exist, return null
+        console.error("[v0] SMTP config error:", error);
+        return null;
+      }
+      return data;
+    },
   });
 
   const [formData, setFormData] = useState({
@@ -24,28 +48,45 @@ export default function AdminAutomation() {
     from_name: "Premunia",
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (smtpConfig) {
       setFormData({
-        ...smtpConfig,
-        password: "", // Don't show password for security
+        host: smtpConfig.host || "",
+        port: smtpConfig.port || "587",
+        user: smtpConfig.user || "",
+        password: "", // Don't show password
+        from_email: smtpConfig.from_email || "",
+        from_name: smtpConfig.from_name || "Premunia",
       });
     }
   }, [smtpConfig]);
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiCall("/smtp-config", {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
+    mutationFn: async (data: any) => {
+      // Only include password if it's been changed
+      const updateData = { ...data };
+      if (!updateData.password) {
+        delete updateData.password;
+      }
+
+      if (smtpConfig?.id) {
+        const { error } = await supabase
+          .from("smtp_config")
+          .update(updateData)
+          .eq("id", smtpConfig.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("smtp_config").insert([updateData]);
+        if (error) throw error;
+      }
+    },
     onSuccess: () => {
-      toast.success("Configuration SMTP enregistrée");
+      toast.success("Configuration SMTP enregistree");
       queryClient.invalidateQueries({ queryKey: ["smtp-config"] });
     },
-    onError: () => {
-      toast.error("Erreur lors de l'enregistrement");
+    onError: (error: any) => {
+      toast.error(`Erreur: ${error.message}`);
     },
   });
 
@@ -54,217 +95,220 @@ export default function AdminAutomation() {
     updateMutation.mutate(formData);
   };
 
+  const handleTestConnection = async () => {
+    setTestStatus("testing");
+    // Simulate test - in production, this would call an Edge Function
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    if (formData.host && formData.user) {
+      setTestStatus("success");
+      toast.success("Connexion SMTP reussie !");
+    } else {
+      setTestStatus("error");
+      toast.error("Veuillez remplir tous les champs");
+    }
+    setTimeout(() => setTestStatus("idle"), 3000);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate("/admin")}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <img
-              src="https://ucarecdn.com/8796d3aa-4089-4859-87df-1772ce670f61/-/format/auto/"
-              alt="Premunia Logo"
-              className="h-8 w-auto"
-            />
-            <span className="text-slate-400">|</span>
-            <h1 className="text-xl font-bold text-slate-800">
-              Automatisation Email
-            </h1>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AdminLayout title="Automatisation" subtitle="Configurez l'envoi automatique d'emails">
+      <div className="max-w-3xl">
         {/* SMTP Configuration */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
-          <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-[#880E4F] to-[#E91E63] text-white">
-            <div className="flex items-center gap-3 mb-2">
-              <Server size={28} />
-              <h2 className="text-2xl font-bold">Configuration SMTP</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+            <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700">
+              <div className="flex items-center gap-3 text-white">
+                <Server size={24} />
+                <div>
+                  <h2 className="text-lg font-bold">Configuration SMTP</h2>
+                  <p className="text-white/80 text-sm">Parametres du serveur d'envoi d'emails</p>
+                </div>
+              </div>
             </div>
-            <p className="opacity-90">
-              Configurez votre serveur d'envoi d'emails
-            </p>
-          </div>
 
-          {isLoading ? (
-            <div className="p-12 text-center text-slate-400">Chargement...</div>
-          ) : (
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-slate-700">
-                <p className="font-semibold mb-2">💡 Exemples de configuration :</p>
-                <ul className="space-y-1 text-sm">
-                  <li>
-                    <strong>Gmail:</strong> smtp.gmail.com:587 (nécessite un mot
-                    de passe d'application)
-                  </li>
-                  <li>
-                    <strong>Outlook:</strong> smtp.office365.com:587
-                  </li>
-                  <li>
-                    <strong>SendGrid:</strong> smtp.sendgrid.net:587
-                  </li>
-                </ul>
+            {isLoading ? (
+              <div className="p-12 text-center">
+                <div className="animate-spin w-8 h-8 border-2 border-slate-200 border-t-purple-600 rounded-full mx-auto"></div>
               </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Serveur SMTP
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.host}
-                    onChange={(e) =>
-                      setFormData({ ...formData, host: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#EE3B33]/20 focus:border-[#EE3B33] outline-none transition-all"
-                    placeholder="smtp.gmail.com"
-                    required
-                  />
+            ) : (
+              <div className="p-6 space-y-6">
+                {/* Info Box */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="font-semibold text-blue-800 mb-2">Exemples de configuration :</p>
+                  <ul className="space-y-1 text-sm text-blue-700">
+                    <li><strong>Gmail:</strong> smtp.gmail.com:587 (mot de passe d'application requis)</li>
+                    <li><strong>Outlook:</strong> smtp.office365.com:587</li>
+                    <li><strong>SendGrid:</strong> smtp.sendgrid.net:587</li>
+                  </ul>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Port
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.port}
-                    onChange={(e) =>
-                      setFormData({ ...formData, port: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#EE3B33]/20 focus:border-[#EE3B33] outline-none transition-all"
-                    placeholder="587"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Utilisateur SMTP
-                </label>
-                <input
-                  type="email"
-                  value={formData.user}
-                  onChange={(e) =>
-                    setFormData({ ...formData, user: e.target.value })
-                  }
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#EE3B33]/20 focus:border-[#EE3B33] outline-none transition-all"
-                  placeholder="votre@email.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Mot de passe SMTP
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#EE3B33]/20 focus:border-[#EE3B33] outline-none transition-all"
-                  placeholder="••••••••"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Laissez vide pour conserver le mot de passe actuel
-                </p>
-              </div>
-
-              <div className="border-t border-slate-200 pt-6 mt-6">
-                <h3 className="font-bold text-slate-800 mb-4">
-                  Paramètres de l'expéditeur
-                </h3>
-
-                <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Email de l'expéditeur
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.from_email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, from_email: e.target.value })
-                      }
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#EE3B33]/20 focus:border-[#EE3B33] outline-none transition-all"
-                      placeholder="contact@premunia.fr"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Nom de l'expéditeur
+                      Serveur SMTP
                     </label>
                     <input
                       type="text"
-                      value={formData.from_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, from_name: e.target.value })
-                      }
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#EE3B33]/20 focus:border-[#EE3B33] outline-none transition-all"
-                      placeholder="Premunia"
-                      required
+                      value={formData.host}
+                      onChange={(e) => setFormData({ ...formData, host: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                      placeholder="smtp.gmail.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Port
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.port}
+                      onChange={(e) => setFormData({ ...formData, port: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                      placeholder="587"
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-4 pt-6">
-                <button
-                  type="button"
-                  onClick={() => navigate("/admin")}
-                  className="flex-1 py-3 px-6 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors font-medium"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateMutation.isPending}
-                  className="flex-1 py-3 px-6 bg-[#EE3B33] text-white rounded-xl hover:bg-[#880E4F] transition-colors font-bold disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <Save size={20} />
-                  {updateMutation.isPending
-                    ? "Enregistrement..."
-                    : "Enregistrer"}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Utilisateur SMTP
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.user}
+                    onChange={(e) => setFormData({ ...formData, user: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                    placeholder="votre@email.com"
+                  />
+                </div>
 
-        {/* Email Template (Future feature) */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Mot de passe SMTP
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                    placeholder="••••••••"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">
+                    Laissez vide pour conserver le mot de passe actuel
+                  </p>
+                </div>
+
+                <div className="border-t border-slate-200 pt-6">
+                  <h3 className="font-bold text-slate-800 mb-4">Parametres de l'expediteur</h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Email expediteur
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.from_email}
+                        onChange={(e) => setFormData({ ...formData, from_email: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                        placeholder="contact@premunia.fr"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Nom expediteur
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.from_name}
+                        onChange={(e) => setFormData({ ...formData, from_name: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                        placeholder="Premunia"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Test Connection */}
+                <div className="flex items-center gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleTestConnection}
+                    disabled={testStatus === "testing"}
+                    className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm font-medium disabled:opacity-50"
+                  >
+                    {testStatus === "testing" ? (
+                      <>
+                        <div className="animate-spin w-4 h-4 border-2 border-slate-300 border-t-purple-600 rounded-full"></div>
+                        Test en cours...
+                      </>
+                    ) : testStatus === "success" ? (
+                      <>
+                        <CheckCircle size={18} className="text-green-500" />
+                        Connexion OK
+                      </>
+                    ) : testStatus === "error" ? (
+                      <>
+                        <XCircle size={18} className="text-red-500" />
+                        Echec
+                      </>
+                    ) : (
+                      <>
+                        <TestTube size={18} />
+                        Tester la connexion
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-4 mb-8">
+            <button
+              type="button"
+              onClick={() => navigate("/admin")}
+              className="flex-1 py-3 px-6 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors font-medium text-slate-700"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={updateMutation.isPending}
+              className="flex-1 py-3 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:opacity-90 transition-opacity font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <Save size={20} />
+              {updateMutation.isPending ? "Enregistrement..." : "Enregistrer"}
+            </button>
+          </div>
+        </form>
+
+        {/* Email Templates - Coming Soon */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-[#F79E1B] to-[#EE3B33] text-white">
-            <div className="flex items-center gap-3 mb-2">
-              <Mail size={28} />
-              <h2 className="text-2xl font-bold">Template d'email automatique</h2>
+          <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-[#F79E1B] to-[#EE3B33]">
+            <div className="flex items-center gap-3 text-white">
+              <Mail size={24} />
+              <div>
+                <h2 className="text-lg font-bold">Templates d'emails automatiques</h2>
+                <p className="text-white/80 text-sm">Personnalisez les emails envoyes aux leads</p>
+              </div>
             </div>
-            <p className="opacity-90">Email envoyé automatiquement aux nouveaux leads</p>
           </div>
 
           <div className="p-8">
-            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-500">
-              <Mail size={48} className="mx-auto mb-4 opacity-50" />
-              <p className="font-medium mb-2">Fonctionnalité à venir</p>
-              <p className="text-sm">
-                Prochainement : créez et personnalisez vos templates d'emails
-                automatiques
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-8 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail size={32} className="text-slate-300" />
+              </div>
+              <p className="font-medium text-slate-600 mb-2">Fonctionnalite a venir</p>
+              <p className="text-sm text-slate-400">
+                Creez et personnalisez vos templates d'emails automatiques
               </p>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

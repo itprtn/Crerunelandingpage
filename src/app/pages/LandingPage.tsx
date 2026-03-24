@@ -45,48 +45,11 @@ const CHART_DATA = [
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [serverStatus, setServerStatus] = useState<"checking" | "ok" | "error" | "cors">("checking");
-  const [serverDetail, setServerDetail] = useState("");
-
-  // Test Supabase connectivity on mount
-  React.useEffect(() => {
-    const testConnection = async () => {
-      console.log("[v0] Testing Supabase connectivity...");
-      try {
-        // Test with a simple query to site_settings
-        const { data, error } = await supabase
-          .from("site_settings")
-          .select("id")
-          .limit(1);
-        
-        if (error) {
-          console.error("[v0] Supabase connection error:", error.message, error.code);
-          if (error.code === "42501" || error.message.includes("permission")) {
-            setServerStatus("ok");
-            setServerDetail("Connexion OK - RLS actif");
-          } else {
-            setServerStatus("error");
-            setServerDetail(`Erreur: ${error.message}`);
-          }
-        } else {
-          console.log("[v0] Supabase connection OK, data:", data);
-          setServerStatus("ok");
-          setServerDetail("Supabase connecte");
-        }
-      } catch (err: any) {
-        console.error("[v0] Supabase exception:", err.message);
-        setServerStatus("error");
-        setServerDetail(`Erreur: ${err.message}`);
-      }
-    };
-    testConnection();
-  }, []);
 
   // Fetch settings from Supabase site_settings table
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: async () => {
-      console.log("[v0] Fetching settings from Supabase site_settings table...");
       try {
         const { data, error } = await supabase
           .from("site_settings")
@@ -94,16 +57,9 @@ export default function LandingPage() {
           .limit(1)
           .single();
         
-        if (error) {
-          console.error("[v0] Settings fetch error:", error.message, error.code);
-          throw error;
-        }
-        
-        console.log("[v0] Settings data received:", data);
+        if (error) throw error;
         return data;
-      } catch (err: any) {
-        console.error("[v0] Settings exception:", err.message);
-        // Return default values
+      } catch {
         return {
           hero_title: "Preparez votre retraite sans sacrifier votre present",
           hero_subtitle: "Le Plan Epargne Retraite (PER) sur-mesure pour les professions liberales : optimisez votre fiscalite des aujourd'hui.",
@@ -118,9 +74,6 @@ export default function LandingPage() {
 
   const leadMutation = useMutation({
     mutationFn: async (formData: any) => {
-      console.log("[v0] === LEAD SUBMISSION START ===");
-      console.log("[v0] Payload:", JSON.stringify(formData, null, 2));
-
       const { data, error } = await supabase
         .from("leads")
         .insert([
@@ -136,23 +89,15 @@ export default function LandingPage() {
         ])
         .select();
 
-      if (error) {
-        console.error("[v0] Lead insert error:", error.message, error.code, error.details);
-        throw new Error(error.message);
-      }
-
-      console.log("[v0] Lead submission SUCCESS:", data);
-      console.log("[v0] === LEAD SUBMISSION END ===");
+      if (error) throw new Error(error.message);
       return data;
     },
     onSuccess: () => {
-      console.log("[v0] Lead mutation onSuccess - showing toast and resetting form");
       toast.success("Demande envoyee ! Nous vous contacterons prochainement.");
       const form = document.getElementById("lead-form") as HTMLFormElement;
       if (form) form.reset();
     },
     onError: (error: any) => {
-      console.error("[v0] Lead mutation onError:", error.message);
       toast.error(error.message || "Erreur lors de l'envoi. Veuillez reessayer.");
     },
   });
@@ -161,14 +106,10 @@ export default function LandingPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
-    console.log("[v0] Form submitted with data:", data);
-    console.log("[v0] Form fields present:", Object.keys(data));
     
-    // Validate required fields before sending
     const required = ["first_name", "last_name", "email", "phone", "profession"];
     const missing = required.filter((f) => !data[f]);
     if (missing.length > 0) {
-      console.error("[v0] Missing required fields:", missing);
       toast.error(`Champs manquants : ${missing.join(", ")}`);
       return;
     }
@@ -422,18 +363,6 @@ export default function LandingPage() {
                     En validant ce formulaire, vous acceptez nos conditions
                     generales d'utilisation.
                   </p>
-                  {/* Debug: Server connectivity status */}
-                  <div className={`text-xs p-2 rounded-lg text-center ${
-                    serverStatus === "ok" ? "bg-green-50 text-green-700 border border-green-200" :
-                    serverStatus === "cors" ? "bg-red-50 text-red-700 border border-red-200" :
-                    serverStatus === "error" ? "bg-orange-50 text-orange-700 border border-orange-200" :
-                    "bg-slate-50 text-slate-500 border border-slate-200"
-                  }`}>
-                    {serverStatus === "checking" && "Verification de la connexion au serveur..."}
-                    {serverStatus === "ok" && `Serveur connecte - ${serverDetail}`}
-                    {serverStatus === "cors" && `CORS Error - ${serverDetail}`}
-                    {serverStatus === "error" && `Erreur serveur - ${serverDetail}`}
-                  </div>
                 </form>
               </div>
             </div>
