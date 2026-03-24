@@ -140,6 +140,9 @@ importers:
       next-themes:
         specifier: 0.4.6
         version: 0.4.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      nodemailer:
+        specifier: 6.9.9
+        version: 6.9.9
       react:
         specifier: 18.3.1
         version: 18.3.1
@@ -2039,6 +2042,10 @@ packages:
 
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
+
+  nodemailer@6.9.9:
+    resolution: {integrity: sha512-dexTll8zqQoVJEZPwQAKzxxtFn0qTnjdQTchoU6Re9BUUGBJiOy3YMn/0ShTW6J5M0dfQ1NeDeRTTl4oIWgQMA==}
+    engines: {node: '>=6.0.0'}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -4072,6 +4079,8 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
 
   node-releases@2.0.27: {}
+
+  nodemailer@6.9.9: {}
 
   object-assign@4.1.1: {}
 
