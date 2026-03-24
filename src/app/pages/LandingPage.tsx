@@ -27,7 +27,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { API_URL } from "../../utils/supabase";
+import { supabase } from "../../utils/supabase";
 
 // Premunia Brand Colors
 const COLORS = {
@@ -48,69 +48,65 @@ export default function LandingPage() {
   const [serverStatus, setServerStatus] = useState<"checking" | "ok" | "error" | "cors">("checking");
   const [serverDetail, setServerDetail] = useState("");
 
-  // Debug: log the API_URL being used
-  console.log("[v0] API_URL configured:", API_URL);
-
-  // Test server connectivity on mount
+  // Test Supabase connectivity on mount
   React.useEffect(() => {
     const testConnection = async () => {
-      const healthUrl = `${API_URL}/health`;
-      console.log("[v0] Testing server connectivity:", healthUrl);
+      console.log("[v0] Testing Supabase connectivity...");
       try {
-        const res = await fetch(healthUrl);
-        console.log("[v0] Health check status:", res.status);
-        if (res.ok) {
-          const data = await res.json();
-          console.log("[v0] Health check response:", data);
-          setServerStatus("ok");
-          setServerDetail(`Serveur OK (${res.status})`);
+        // Test with a simple query to site_settings
+        const { data, error } = await supabase
+          .from("site_settings")
+          .select("id")
+          .limit(1);
+        
+        if (error) {
+          console.error("[v0] Supabase connection error:", error.message, error.code);
+          if (error.code === "42501" || error.message.includes("permission")) {
+            setServerStatus("ok");
+            setServerDetail("Connexion OK - RLS actif");
+          } else {
+            setServerStatus("error");
+            setServerDetail(`Erreur: ${error.message}`);
+          }
         } else {
-          const text = await res.text();
-          console.error("[v0] Health check failed:", res.status, text);
-          setServerStatus("error");
-          setServerDetail(`Erreur serveur: ${res.status} - ${text.substring(0, 100)}`);
+          console.log("[v0] Supabase connection OK, data:", data);
+          setServerStatus("ok");
+          setServerDetail("Supabase connecte");
         }
       } catch (err: any) {
-        console.error("[v0] Health check exception:", err.message, err.name);
-        if (err.name === "TypeError" && err.message.includes("Failed to fetch")) {
-          setServerStatus("cors");
-          setServerDetail("CORS bloque les requetes - L'Edge Function doit etre redeployee");
-        } else {
-          setServerStatus("error");
-          setServerDetail(`Erreur: ${err.message}`);
-        }
+        console.error("[v0] Supabase exception:", err.message);
+        setServerStatus("error");
+        setServerDetail(`Erreur: ${err.message}`);
       }
     };
     testConnection();
   }, []);
 
-  // Fetch settings from Edge Function (KV store)
+  // Fetch settings from Supabase site_settings table
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: async () => {
-      const settingsUrl = `${API_URL}/settings`;
-      console.log("[v0] Fetching settings from:", settingsUrl);
+      console.log("[v0] Fetching settings from Supabase site_settings table...");
       try {
-        const res = await fetch(settingsUrl);
-        console.log("[v0] Settings response status:", res.status, res.statusText);
-        console.log("[v0] Settings response headers:", Object.fromEntries(res.headers.entries()));
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error("[v0] Settings response body (error):", errorText);
-          throw new Error(`Failed to fetch settings: ${res.status}`);
+        const { data, error } = await supabase
+          .from("site_settings")
+          .select("*")
+          .limit(1)
+          .single();
+        
+        if (error) {
+          console.error("[v0] Settings fetch error:", error.message, error.code);
+          throw error;
         }
-        const data = await res.json();
+        
         console.log("[v0] Settings data received:", data);
         return data;
       } catch (err: any) {
-        console.error("[v0] Settings fetch error:", err.message);
-        console.error("[v0] Settings fetch error type:", err.name);
-        if (err.name === "TypeError" && err.message.includes("Failed to fetch")) {
-          console.error("[v0] CORS ERROR DETECTED - The Edge Function is blocking this origin");
-        }
+        console.error("[v0] Settings exception:", err.message);
+        // Return default values
         return {
-          hero_title: "Préparez votre retraite sans sacrifier votre présent",
-          hero_subtitle: "Le Plan Épargne Retraite (PER) sur-mesure pour les professions libérales : optimisez votre fiscalité dès aujourd'hui.",
+          hero_title: "Preparez votre retraite sans sacrifier votre present",
+          hero_subtitle: "Le Plan Epargne Retraite (PER) sur-mesure pour les professions liberales : optimisez votre fiscalite des aujourd'hui.",
           contact_email: "contact@premunia.fr",
           contact_phone: "01 00 00 00 00",
           contact_address: "828 Av. Roger Salengro, 92370 Chaville",
@@ -122,57 +118,32 @@ export default function LandingPage() {
 
   const leadMutation = useMutation({
     mutationFn: async (formData: any) => {
-      const leadsUrl = `${API_URL}/leads`;
-      const payload = {
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        email: formData.email,
-        phone: formData.phone,
-        profession: formData.profession,
-        message: formData.message || "",
-      };
-
       console.log("[v0] === LEAD SUBMISSION START ===");
-      console.log("[v0] Target URL:", leadsUrl);
-      console.log("[v0] Payload:", JSON.stringify(payload, null, 2));
-      console.log("[v0] Current origin:", window.location.origin);
+      console.log("[v0] Payload:", JSON.stringify(formData, null, 2));
 
-      try {
-        const res = await fetch(leadsUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+      const { data, error } = await supabase
+        .from("leads")
+        .insert([
+          {
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            email: formData.email,
+            phone: formData.phone,
+            profession: formData.profession,
+            notes: formData.message || "",
+            status: "new",
+          },
+        ])
+        .select();
 
-        console.log("[v0] Lead response status:", res.status, res.statusText);
-        console.log("[v0] Lead response headers:", Object.fromEntries(res.headers.entries()));
-
-        if (!res.ok) {
-          const errorBody = await res.text();
-          console.error("[v0] Lead error response body:", errorBody);
-          let parsedError;
-          try {
-            parsedError = JSON.parse(errorBody);
-          } catch {
-            parsedError = { error: errorBody || "Erreur inconnue" };
-          }
-          throw new Error(parsedError.error || `HTTP ${res.status}: Erreur lors de l'envoi`);
-        }
-
-        const result = await res.json();
-        console.log("[v0] Lead submission SUCCESS:", result);
-        console.log("[v0] === LEAD SUBMISSION END ===");
-        return result;
-      } catch (err: any) {
-        console.error("[v0] Lead fetch exception:", err.message);
-        console.error("[v0] Lead error type:", err.name);
-        if (err.name === "TypeError" && err.message.includes("Failed to fetch")) {
-          console.error("[v0] CORS ERROR on lead submission - Check Edge Function CORS config");
-          console.error("[v0] Expected origin in CORS allow list:", window.location.origin);
-          throw new Error("Erreur de connexion au serveur (CORS). Contactez l'administrateur.");
-        }
-        throw err;
+      if (error) {
+        console.error("[v0] Lead insert error:", error.message, error.code, error.details);
+        throw new Error(error.message);
       }
+
+      console.log("[v0] Lead submission SUCCESS:", data);
+      console.log("[v0] === LEAD SUBMISSION END ===");
+      return data;
     },
     onSuccess: () => {
       console.log("[v0] Lead mutation onSuccess - showing toast and resetting form");
